@@ -17,6 +17,7 @@ export const auditLog = (action, entity) => {
               JSON.stringify({ body: req.body, params: req.params, query: req.query }),
               req.ip,
               req.headers["user-agent"] || null,
+              
             ]
           );
         }

@@ -79,8 +79,12 @@ const EMPTY_INTEGRATIONS = {
 
   // WhatsApp
   whatsapp_enabled: false,
+  whatsapp_provider: "360dialog",
   whatsapp_api_key: "",
   whatsapp_phone_number: "",
+  whatsapp_template_name: "",
+  whatsapp_phone_number_id: "",
+  whatsapp_business_account_id: "",
 
   // Shiprocket
   shiprocket_email: "",
@@ -613,6 +617,33 @@ export default function StoreSettings() {
                       <CardContent className="space-y-3 py-2">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
+                            <Label className="text-xs font-medium">Provider</Label>
+                            <Select
+                              value={integrations.whatsapp_provider || "360dialog"}
+                              onValueChange={(val) => updateIntegrationField("whatsapp_provider", val)}
+                              disabled={!(integrations.whatsapp_enabled === true || integrations.whatsapp_enabled === "true")}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select provider" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="360dialog">360dialog</SelectItem>
+                                <SelectItem value="meta">Meta Cloud API</SelectItem>
+                                
+                                {/* <SelectItem value="360dialog">360dialog</SelectItem> */}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label className="text-xs font-medium">OTP Template Name</Label>
+                            <Input
+                              value={integrations.whatsapp_template_name || ""}
+                              onChange={(e) => updateIntegrationField("whatsapp_template_name", e.target.value)}
+                              placeholder="e.g. authentication_code"
+                              disabled={!(integrations.whatsapp_enabled === true || integrations.whatsapp_enabled === "true")}
+                            />
+                          </div>
+                          <div>
                             <Label className="text-xs font-medium">API Key / Access Token</Label>
                             <Input
                               type="password"
@@ -623,7 +654,7 @@ export default function StoreSettings() {
                             />
                           </div>
                           <div>
-                            <Label className="text-xs font-medium">Phone Number ID</Label>
+                            <Label className="text-xs font-medium">WhatsApp Business Number</Label>
                             <Input
                               value={integrations.whatsapp_phone_number}
                               onChange={(e) => updateIntegrationField("whatsapp_phone_number", e.target.value)}
@@ -631,7 +662,33 @@ export default function StoreSettings() {
                               disabled={!(integrations.whatsapp_enabled === true || integrations.whatsapp_enabled === "true")}
                             />
                           </div>
+                          {integrations.whatsapp_provider === "meta" && (
+  <>
+    <div>
+      <Label className="text-xs font-medium">Phone Number ID</Label>
+      <Input
+        value={integrations.whatsapp_phone_number_id || ""}
+        onChange={(e) => updateIntegrationField("whatsapp_phone_number_id", e.target.value)}
+        placeholder="Meta Phone Number ID"
+        disabled={!(integrations.whatsapp_enabled === true || integrations.whatsapp_enabled === "true")}
+      />
+    </div>
+
+    <div>
+      <Label className="text-xs font-medium">Business Account ID</Label>
+      <Input
+        value={integrations.whatsapp_business_account_id || ""}
+        onChange={(e) => updateIntegrationField("whatsapp_business_account_id", e.target.value)}
+        placeholder="Meta WABA ID"
+        disabled={!(integrations.whatsapp_enabled === true || integrations.whatsapp_enabled === "true")}
+      />
+    </div>
+  </>
+)}
                         </div>
+                        <p className="text-xs text-muted-foreground">
+                          Used for registration and forgot-password OTP via 360dialog WhatsApp authentication templates.
+                        </p>
                       </CardContent>
                     </Card>
                   </div>

@@ -24,7 +24,13 @@ export const authenticate = async (req, res, next) => {
       email: decoded.email,
       role: decoded.role,
       name: decoded.name || "",
+      store_id: decoded.store_id ?? null,
+      allowed_store_ids: decoded.allowed_store_ids || [],
     };
+    if (req.admin.role !== "super_admin") {
+      req.storeId = Number(req.admin.store_id || 1);
+      req.headers["x-store-id"] = String(req.storeId);
+    }
     next();
   } catch (error) {
     if (error.name === "TokenExpiredError") {
@@ -46,8 +52,11 @@ export const optionalAuth = async (req, res, next) => {
           email: decoded.email,
           role: decoded.role,
           name: decoded.name || "",
+          store_id: decoded.store_id ?? null,
+allowed_store_ids: decoded.allowed_store_ids || [],
         };
       }
+      
     }
   } catch {
     // optional — ignore

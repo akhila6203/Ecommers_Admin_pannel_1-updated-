@@ -4,6 +4,16 @@ import { hashPassword, comparePassword } from "../helpers/passwordHelper.js";
 import { successResponse, errorResponse } from "../helpers/responseHelper.js";
 import { getStoreId } from "../helpers/storeHelper.js";
 import { getSessionId, mergeSessionCartToCustomer } from "../helpers/cartHelper.js";
+import {
+  isValidIndianPhone,
+  normalizeIndianPhone,
+  hashResetToken,
+} from "../helpers/otpHelper.js";
+import {
+  createAndSendOtp,
+  verifyOtpCode,
+  assertRegisterPhoneVerified,
+} from "../services/customerOtpService.js";
 import logger from "../config/logger.js";
 
 
@@ -49,13 +59,147 @@ const issueTokens = async (customer) => {
   return { token, refreshToken };
 };
 
+export const sendOtp = async (req, res) => {
+  try {
+    const storeId = getStoreId(req);
+    const { phone, email, purpose } = req.body;
+
+    if (!phone?.trim()) {
+      return errorResponse(res, "Phone number is required", 400);
+    }
+    if (!purpose || !["register", "forgot_password"].includes(purpose)) {
+      return errorResponse(res, "Valid purpose (register or forgot_password) is required", 400);
+    }
+
+    const normalizedPhone = normalizeIndianPhone(phone);
+    if (!isValidIndianPhone(normalizedPhone)) {
+      return errorResponse(res, "Please enter a valid 10-digit Indian mobile number", 400);
+    }
+
+    if (purpose === "register") {
+      const existingEmail = email?.trim()
+        ? await query(
+            "SELECT id FROM customers WHERE email = ? AND store_id = ?",
+            [email.trim().toLowerCase(), storeId]
+          )
+        : [];
+      if (existingEmail.length) {
+        return errorResponse(res, "Email already registered", 409);
+      }
+
+      const existingPhone = await query(
+        "SELECT id FROM customers WHERE phone = ? AND store_id = ?",
+        [normalizedPhone, storeId]
+      );
+      if (existingPhone.length) {
+        return errorResponse(res, "Phone number already registered", 409);
+      }
+    }
+
+    if (purpose === "forgot_password") {
+      const existingPhone = await query(
+        "SELECT id FROM customers WHERE phone = ? AND store_id = ?",
+        [normalizedPhone, storeId]
+      );
+      if (!existingPhone.length) {
+        return errorResponse(res, "No account found with this phone number", 404);
+      }
+    }
+
+    await createAndSendOtp({
+      storeId,
+      phone: normalizedPhone,
+      email: email?.trim()?.toLowerCase() || null,
+      purpose,
+    });
+
+    return successResponse(res, { phone: normalizedPhone }, "OTP sent to your WhatsApp");
+  } catch (error) {
+    logger.error("Send OTP error:", error);
+    return errorResponse(
+      res,
+      error.message || "Failed to send OTP",
+      error.statusCode || 500
+    );
+  }
+};
+
+export const verifyOtp = async (req, res) => {
+  try {
+    const storeId = getStoreId(req);
+    const { phone, otp, purpose } = req.body;
+
+    if (!phone?.trim() || !otp?.trim()) {
+      return errorResponse(res, "Phone and OTP are required", 400);
+    }
+    if (!purpose || !["register", "forgot_password"].includes(purpose)) {
+      return errorResponse(res, "Valid purpose (register or forgot_password) is required", 400);
+    }
+
+    const normalizedPhone = normalizeIndianPhone(phone);
+    if (!isValidIndianPhone(normalizedPhone)) {
+      return errorResponse(res, "Please enter a valid 10-digit Indian mobile number", 400);
+    }
+
+    const { verificationToken } = await verifyOtpCode({
+      storeId,
+      phone: normalizedPhone,
+      otp: otp.trim(),
+      purpose,
+    });
+
+    return successResponse(
+      res,
+      { verification_token: verificationToken, phone: normalizedPhone },
+      "OTP verified successfully"
+    );
+  } catch (error) {
+    logger.error("Verify OTP error:", error);
+    return errorResponse(
+      res,
+      error.message || "OTP verification failed",
+      error.statusCode || 400
+    );
+  }
+};
+
 export const register = async (req, res) => {
   try {
     const storeId = getStoreId(req);
-    const { first_name, last_name, email, phone, password } = req.body;
+    const { first_name, last_name, email, phone, password, verification_token } = req.body;
 
-    if (!first_name?.trim() || !last_name?.trim() || !email?.trim() || !phone?.trim() || !password) {
-      return errorResponse(res, "First name, last name, email, phone and password are required", 400);
+    if (
+      !first_name?.trim() ||
+      !last_name?.trim() ||
+      !email?.trim() ||
+      !phone?.trim() ||
+      !password ||
+      !verification_token
+    ) {
+      return errorResponse(
+        res,
+        "First name, last name, email, phone, password and verified OTP are required",
+        400
+      );
+    }
+
+    const normalizedPhone = normalizeIndianPhone(phone);
+    if (!isValidIndianPhone(normalizedPhone)) {
+      return errorResponse(res, "Please enter a valid 10-digit Indian mobile number", 400);
+    }
+
+    try {
+      assertRegisterPhoneVerified({
+        storeId,
+        phone: normalizedPhone,
+        verificationToken: verification_token,
+      });
+    } catch (verifyError) {
+      return errorResponse(
+        res,
+        verifyError.message || "Phone verification required. Please verify OTP first.",
+        400
+      );
     }
 
     const existing = await query(
@@ -66,17 +210,25 @@ export const register = async (req, res) => {
       return errorResponse(res, "Email already registered", 409);
     }
 
+    const existingPhone = await query(
+      "SELECT id FROM customers WHERE phone = ? AND store_id = ?",
+      [normalizedPhone, storeId]
+    );
+    if (existingPhone.length) {
+      return errorResponse(res, "Phone number already registered", 409);
+    }
+
     const hashedPassword = await hashPassword(password);
     const result = await query(
       `INSERT INTO customers
-        (store_id, first_name, last_name, email, phone, password)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+        (store_id, first_name, last_name, email, phone, password, phone_verified)
+       VALUES (?, ?, ?, ?, ?, ?, 1)`,
       [
         storeId,
         first_name.trim(),
         last_name.trim(),
         email.trim().toLowerCase(),
-        phone.trim(),
+        normalizedPhone,
         hashedPassword,
       ]
     );
@@ -87,22 +239,10 @@ export const register = async (req, res) => {
     );
     const customer = customers[0];
 
-    const sessionId = getSessionId(req);
-    if (sessionId) {
-      try {
-        await mergeSessionCartToCustomer(storeId, sessionId, customer.id);
-      } catch (mergeError) {
-        logger.error("Cart merge after register failed:", mergeError);
-      }
-    }
-
-    const { token, refreshToken } = await issueTokens(customer);
-
     return res.status(201).json({
       success: true,
+      message: "Registration successful. Please login.",
       customer: buildCustomerPayload(customer),
-      token,
-      refreshToken,
     });
   } catch (error) {
     logger.error("Customer register error:", error);
@@ -117,21 +257,45 @@ export const register = async (req, res) => {
 export const login = async (req, res) => {
   try {
     const storeId = getStoreId(req);
-    const { email, password } = req.body;
+    const { email, phone, password } = req.body;
 
-    if (!email?.trim() || !password) {
-      return errorResponse(res, "Email and password are required", 400);
+    if (!password) {
+      return errorResponse(res, "Password is required", 400);
     }
 
-    const customers = await query(
-      `SELECT id, store_id, first_name, last_name, email, password, phone, avatar, gender,
-              date_of_birth, status, total_orders, total_spent, created_at, last_login_at
-       FROM customers WHERE email = ? AND store_id = ?`,
-      [email.trim().toLowerCase(), storeId]
-    );
+    const hasEmail = Boolean(email?.trim());
+    const hasPhone = Boolean(phone?.trim());
+
+    if (!hasEmail && !hasPhone) {
+      return errorResponse(res, "Email or phone and password are required", 400);
+    }
+    if (hasEmail && hasPhone) {
+      return errorResponse(res, "Please login with either email or phone, not both", 400);
+    }
+
+    let customers;
+    if (hasEmail) {
+      customers = await query(
+        `SELECT id, store_id, first_name, last_name, email, password, phone, avatar, gender,
+                date_of_birth, status, total_orders, total_spent, created_at, last_login_at
+         FROM customers WHERE email = ? AND store_id = ?`,
+        [email.trim().toLowerCase(), storeId]
+      );
+    } else {
+      const normalizedPhone = normalizeIndianPhone(phone);
+      if (!isValidIndianPhone(normalizedPhone)) {
+        return errorResponse(res, "Please enter a valid 10-digit Indian mobile number", 400);
+      }
+      customers = await query(
+        `SELECT id, store_id, first_name, last_name, email, password, phone, avatar, gender,
+                date_of_birth, status, total_orders, total_spent, created_at, last_login_at
+         FROM customers WHERE phone = ? AND store_id = ?`,
+        [normalizedPhone, storeId]
+      );
+    }
 
     if (!customers.length) {
-      return errorResponse(res, "Invalid email or password", 401);
+      return errorResponse(res, "Invalid credentials", 401);
     }
 
     const customer = customers[0];
@@ -145,7 +309,7 @@ export const login = async (req, res) => {
 
     const isMatch = await comparePassword(password, customer.password);
     if (!isMatch) {
-      return errorResponse(res, "Invalid email or password", 401);
+      return errorResponse(res, "Invalid credentials", 401);
     }
 
     await query(
@@ -502,6 +666,91 @@ export const deleteAddress = async (req, res) => {
       res,
       error.sqlMessage || error.message || "Failed to delete address",
       500
+    );
+  }
+};
+
+export const forgotPassword = async (req, res) => {
+  try {
+    const storeId = getStoreId(req);
+    const { phone } = req.body;
+
+    if (!phone?.trim()) {
+      return errorResponse(res, "Phone number is required", 400);
+    }
+
+    const normalizedPhone = normalizeIndianPhone(phone);
+    if (!isValidIndianPhone(normalizedPhone)) {
+      return errorResponse(res, "Please enter a valid 10-digit Indian mobile number", 400);
+    }
+
+    const existing = await query(
+      "SELECT id FROM customers WHERE phone = ? AND store_id = ?",
+      [normalizedPhone, storeId]
+    );
+    if (!existing.length) {
+      return errorResponse(res, "No account found with this phone number", 404);
+    }
+
+    await createAndSendOtp({
+      storeId,
+      phone: normalizedPhone,
+      purpose: "forgot_password",
+    });
+
+    return successResponse(res, { phone: normalizedPhone }, "OTP sent to your WhatsApp");
+  } catch (error) {
+    logger.error("Forgot password error:", error);
+    return errorResponse(
+      res,
+      error.message || "Failed to send reset OTP",
+      error.statusCode || 500
+    );
+  }
+};
+
+export const resetPassword = async (req, res) => {
+  try {
+    const storeId = getStoreId(req);
+    const { phone, otp, password } = req.body;
+
+    if (!phone?.trim() || !otp?.trim() || !password) {
+      return errorResponse(res, "Phone, OTP and new password are required", 400);
+    }
+
+    if (password.length < 6) {
+      return errorResponse(res, "Password must be at least 6 characters long", 400);
+    }
+
+    const normalizedPhone = normalizeIndianPhone(phone);
+    if (!isValidIndianPhone(normalizedPhone)) {
+      return errorResponse(res, "Please enter a valid 10-digit Indian mobile number", 400);
+    }
+
+    await verifyOtpCode({
+      storeId,
+      phone: normalizedPhone,
+      otp: otp.trim(),
+      purpose: "forgot_password",
+    });
+
+    const hashedPassword = await hashPassword(password);
+    const resetToken = hashResetToken(`${normalizedPhone}:${Date.now()}`);
+
+    await query(
+      `UPDATE customers
+       SET password = ?, reset_token = ?, reset_token_expires_at = DATE_ADD(NOW(), INTERVAL 1 HOUR)
+       WHERE phone = ? AND store_id = ?`,
+      [hashedPassword, resetToken, normalizedPhone, storeId]
+    );
+
+    return successResponse(res, null, "Password reset successful. Please login with your new password.");
+  } catch (error) {
+    logger.error("Reset password error:", error);
+    return errorResponse(
+      res,
+      error.message || "Failed to reset password",
+      error.statusCode || 400
     );
   }
 };

@@ -94,3 +94,19 @@ CREATE TABLE IF NOT EXISTS `refresh_tokens` (
   KEY `idx_refresh_tokens_customer` (`customer_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+
+USE lms;
+
+ALTER TABLE admins
+ADD COLUMN IF NOT EXISTS store_id INT NULL AFTER id;
+
+ALTER TABLE admins
+ADD INDEX IF NOT EXISTS idx_admins_store_id (store_id);
+
+UPDATE admins
+SET store_id = NULL
+WHERE role = 'super_admin';
+
+UPDATE admins
+SET store_id = 1
+WHERE role <> 'super_admin' AND store_id IS NULL;
