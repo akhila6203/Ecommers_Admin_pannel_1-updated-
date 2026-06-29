@@ -130,7 +130,14 @@ export default function Orders() {
       invalidate();
       toast.success("Shiprocket shipment created.");
     },
-    onError: (err) => toast.error(err.message || "Failed to create Shiprocket shipment"),
+    onError: (err) =>
+  toast.error(
+    err.response?.data?.message ||
+    err.response?.data?.data?.message ||
+    err.message ||
+    "Failed to create Shiprocket shipment"
+  ),
+    // onError: (err) => toast.error(err.message || "Failed to create Shiprocket shipment"),
   });
 
   const shiprocketSyncMutation = useMutation({

@@ -248,6 +248,12 @@ export const getPermissions = async (req, res) => {
 };
 
 
+
+
+
+
+
+
 // import { query } from "../config/db.js";
 // import { successResponse, errorResponse, paginatedResponse } from "../helpers/responseHelper.js";
 // import { hashPassword } from "../helpers/passwordHelper.js";
