@@ -1,10 +1,9 @@
-import { query, getConnection } from "../config/db.js";
-import { generateSlug, generateUniqueSlug } from "../helpers/slugHelper.js";
-import { generateSKU, calculateDiscount } from "../helpers/generateHelper.js";
-import { successResponse, errorResponse, paginatedResponse } from "../helpers/responseHelper.js";
-import { getStoreId } from "../helpers/storeHelper.js";
-import logger from "../config/logger.js";
-
+const { query, getConnection } = require("../config/db");
+const { generateSlug, generateUniqueSlug } = require("../helpers/slugHelper");
+const { generateSKU, calculateDiscount } = require("../helpers/generateHelper");
+const { successResponse, errorResponse, paginatedResponse } = require("../helpers/responseHelper");
+const { getStoreId } = require("../helpers/storeHelper");
+const logger = require("../config/logger");
 const parseJsonField = (value) => {
   if (value == null || value === "") return null;
   if (typeof value === "object") return value;
@@ -623,7 +622,7 @@ const checkProductSlug = async (slug, storeId, excludeId = null) => {
 
 // @desc    Get all products with filters, pagination, sorting
 // @route   GET /api/products
-export const getProducts = async (req, res) => {
+const getProducts = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const page = parseInt(req.query.page) || 1;
@@ -738,7 +737,7 @@ export const getProducts = async (req, res) => {
 
 // @desc    Get single product
 // @route   GET /api/products/:id
-export const getProduct = async (req, res) => {
+const getProduct = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const products = await query(
@@ -787,7 +786,7 @@ export const getProduct = async (req, res) => {
 
 // @desc    Get product by slug
 // @route   GET /api/products/slug/:slug
-export const getProductBySlug = async (req, res) => {
+const getProductBySlug = async (req, res) => {
   try {
     const storeId = getStoreId(req);
 
@@ -861,7 +860,7 @@ export const getProductBySlug = async (req, res) => {
     return errorResponse(res, "Failed to fetch product", 500);
   }
 };
-// export const getProductBySlug = async (req, res) => {
+// const getProductBySlug = async (req, res) => {
 //   try {
 //     const storeId = getStoreId(req);
 //     const products = await query(
@@ -888,7 +887,7 @@ export const getProductBySlug = async (req, res) => {
 
 // @desc    Create product
 // @route   POST /api/products
-export const createProduct = async (req, res) => {
+const createProduct = async (req, res) => {
   const conn = await getConnection();
   try {
     const storeId = getStoreId(req);
@@ -987,7 +986,7 @@ export const createProduct = async (req, res) => {
 
 // @desc    Update product
 // @route   PUT /api/products/:id
-export const updateProduct = async (req, res) => {
+const updateProduct = async (req, res) => {
   const conn = await getConnection();
   try {
     const storeId = getStoreId(req);
@@ -1134,7 +1133,7 @@ export const updateProduct = async (req, res) => {
 
 // @desc    Delete product (permanent)
 // @route   DELETE /api/products/:id
-export const deleteProduct = async (req, res) => {
+const deleteProduct = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const existing = await query("SELECT id FROM products WHERE id = ? AND store_id = ?", [req.params.id, storeId]);
@@ -1149,7 +1148,7 @@ export const deleteProduct = async (req, res) => {
 
 // @desc    Bulk delete products
 // @route   POST /api/products/bulk-delete
-export const bulkDeleteProducts = async (req, res) => {
+const bulkDeleteProducts = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const { ids } = req.body;
@@ -1167,7 +1166,7 @@ export const bulkDeleteProducts = async (req, res) => {
 
 // @desc    Bulk upload products (Excel/CSV)
 // @route   POST /api/products/bulk-upload
-export const bulkUploadProducts = async (req, res) => {
+const bulkUploadProducts = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const { products } = req.body;
@@ -1198,7 +1197,7 @@ export const bulkUploadProducts = async (req, res) => {
 
 // @desc    Toggle featured
 // @route   PUT /api/products/:id/featured
-export const toggleFeatured = async (req, res) => {
+const toggleFeatured = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const existing = await query("SELECT id, is_featured FROM products WHERE id = ? AND store_id = ?", [req.params.id, storeId]);
@@ -1214,7 +1213,7 @@ export const toggleFeatured = async (req, res) => {
 
 // @desc    Toggle trending
 // @route   PUT /api/products/:id/trending
-export const toggleTrending = async (req, res) => {
+const toggleTrending = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const existing = await query("SELECT id, is_trending FROM products WHERE id = ? AND store_id = ?", [req.params.id, storeId]);
@@ -1230,7 +1229,7 @@ export const toggleTrending = async (req, res) => {
 
 // @desc    Toggle best seller
 // @route   PUT /api/products/:id/best-seller
-export const toggleBestSeller = async (req, res) => {
+const toggleBestSeller = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const existing = await query("SELECT id, is_best_seller FROM products WHERE id = ? AND store_id = ?", [req.params.id, storeId]);
@@ -1246,7 +1245,7 @@ export const toggleBestSeller = async (req, res) => {
 
 // @desc    Update product status
 // @route   PUT /api/products/:id/status
-export const updateProductStatus = async (req, res) => {
+const updateProductStatus = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const { status } = req.body;
@@ -1265,7 +1264,7 @@ export const updateProductStatus = async (req, res) => {
 
 // @desc    Update stock
 // @route   PUT /api/products/:id/stock
-export const updateStock = async (req, res) => {
+const updateStock = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const { stock } = req.body;
@@ -1293,7 +1292,7 @@ export const updateStock = async (req, res) => {
 
 // @desc    Delete product image
 // @route   DELETE /api/products/:id/images/:imageId
-export const deleteProductImage = async (req, res) => {
+const deleteProductImage = async (req, res) => {
   try {
     const { id, imageId } = req.params;
     const images = await query("SELECT id, image FROM product_images WHERE id = ? AND product_id = ?", [imageId, id]);
@@ -1308,7 +1307,7 @@ export const deleteProductImage = async (req, res) => {
 
 // @desc    Export products to Excel
 // @route   GET /api/products/export/excel
-export const exportProductsExcel = async (req, res) => {
+const exportProductsExcel = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const products = await query(
@@ -1334,7 +1333,7 @@ export const exportProductsExcel = async (req, res) => {
 
 // @desc    Get variant options for a product
 // @route   GET /api/products/:productId/variant-options
-export const getVariantOptions = async (req, res) => {
+const getVariantOptions = async (req, res) => {
   try {
     const options = await query(
       "SELECT * FROM product_variant_options WHERE product_id = ? ORDER BY sort_order ASC",
@@ -1349,7 +1348,7 @@ export const getVariantOptions = async (req, res) => {
 
 // @desc    Create variant option (e.g. Size: [S, M, L])
 // @route   POST /api/products/:productId/variant-options
-export const createVariantOption = async (req, res) => {
+const createVariantOption = async (req, res) => {
   try {
     const { option_name, option_values, sort_order } = req.body;
     if (!option_name || !option_values) {
@@ -1372,7 +1371,7 @@ export const createVariantOption = async (req, res) => {
 
 // @desc    Update variant option
 // @route   PUT /api/products/:productId/variant-options/:optionId
-export const updateVariantOption = async (req, res) => {
+const updateVariantOption = async (req, res) => {
   try {
     const { option_name, option_values, sort_order } = req.body;
     const existing = await query(
@@ -1412,7 +1411,7 @@ export const updateVariantOption = async (req, res) => {
 
 // @desc    Delete variant option
 // @route   DELETE /api/products/:productId/variant-options/:optionId
-export const deleteVariantOption = async (req, res) => {
+const deleteVariantOption = async (req, res) => {
   try {
     const existing = await query(
       "SELECT id FROM product_variant_options WHERE id = ? AND product_id = ?",
@@ -1430,7 +1429,7 @@ export const deleteVariantOption = async (req, res) => {
 
 // @desc    Auto-generate variant combinations from options
 // @route   POST /api/products/:productId/variant-combinations/generate
-export const generateVariantCombinations = async (req, res) => {
+const generateVariantCombinations = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const productId = req.params.productId;
@@ -1488,7 +1487,7 @@ export const generateVariantCombinations = async (req, res) => {
 
 // @desc    Update a variant combination
 // @route   PUT /api/products/:productId/variants/:variantId
-export const updateVariant = async (req, res) => {
+const updateVariant = async (req, res) => {
   try {
     const variantId = req.params.variantId;
     const existing = await query("SELECT id FROM product_variants WHERE id = ? AND product_id = ?", [variantId, req.params.productId]);
@@ -1530,7 +1529,7 @@ export const updateVariant = async (req, res) => {
 
 // @desc    Delete a variant
 // @route   DELETE /api/products/:productId/variants/:variantId
-export const deleteVariant = async (req, res) => {
+const deleteVariant = async (req, res) => {
   try {
     const { productId, variantId } = req.params;
     const existing = await query(
@@ -1553,7 +1552,7 @@ export const deleteVariant = async (req, res) => {
 
 // @desc    Get SEO data for a product
 // @route   GET /api/products/:productId/seo
-export const getProductSeo = async (req, res) => {
+const getProductSeo = async (req, res) => {
   try {
     const [seo] = await query("SELECT * FROM product_seo WHERE product_id = ?", [req.params.productId]);
     return successResponse(res, seo || null);
@@ -1565,7 +1564,7 @@ export const getProductSeo = async (req, res) => {
 
 // @desc    Create or update SEO data for a product
 // @route   PUT /api/products/:productId/seo
-export const updateProductSeo = async (req, res) => {
+const updateProductSeo = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const productId = req.params.productId;
@@ -1614,3 +1613,28 @@ export const updateProductSeo = async (req, res) => {
     return errorResponse(res, process.env.NODE_ENV === 'development' ? error.message : "Failed to update product SEO", 500);
   }
 };
+
+module.exports.getProducts = getProducts;
+module.exports.getProduct = getProduct;
+module.exports.getProductBySlug = getProductBySlug;
+module.exports.createProduct = createProduct;
+module.exports.updateProduct = updateProduct;
+module.exports.deleteProduct = deleteProduct;
+module.exports.bulkDeleteProducts = bulkDeleteProducts;
+module.exports.bulkUploadProducts = bulkUploadProducts;
+module.exports.toggleFeatured = toggleFeatured;
+module.exports.toggleTrending = toggleTrending;
+module.exports.toggleBestSeller = toggleBestSeller;
+module.exports.updateProductStatus = updateProductStatus;
+module.exports.updateStock = updateStock;
+module.exports.deleteProductImage = deleteProductImage;
+module.exports.exportProductsExcel = exportProductsExcel;
+module.exports.getVariantOptions = getVariantOptions;
+module.exports.createVariantOption = createVariantOption;
+module.exports.updateVariantOption = updateVariantOption;
+module.exports.deleteVariantOption = deleteVariantOption;
+module.exports.generateVariantCombinations = generateVariantCombinations;
+module.exports.updateVariant = updateVariant;
+module.exports.deleteVariant = deleteVariant;
+module.exports.getProductSeo = getProductSeo;
+module.exports.updateProductSeo = updateProductSeo;

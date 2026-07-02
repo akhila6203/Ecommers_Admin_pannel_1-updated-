@@ -1,12 +1,7 @@
-import multer from "multer";
-import path from "path";
-import fs from "fs";
-import { fileURLToPath } from "url";
-import { errorResponse } from "../helpers/responseHelper.js";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
+const { errorResponse } = require("../helpers/responseHelper");
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     let uploadPath = path.join(__dirname, "../../uploads");
@@ -57,7 +52,7 @@ const videoFilter = (req, file, cb) => {
   }
 };
 
-export const upload = multer({
+const upload = multer({
   storage,
   limits: {
     fileSize: parseInt(process.env.UPLOAD_MAX_SIZE) || 10 * 1024 * 1024,
@@ -65,7 +60,7 @@ export const upload = multer({
   fileFilter: imageFilter,
 });
 
-export const videoUpload = multer({
+const videoUpload = multer({
   storage,
   limits: {
     fileSize: parseInt(process.env.UPLOAD_VIDEO_MAX_SIZE) || 100 * 1024 * 1024,
@@ -73,7 +68,7 @@ export const videoUpload = multer({
   fileFilter: videoFilter,
 });
 
-export const productUpload = multer({
+const productUpload = multer({
   storage,
   limits: {
     fileSize: parseInt(process.env.UPLOAD_MAX_SIZE) || 10 * 1024 * 1024,
@@ -87,7 +82,7 @@ export const productUpload = multer({
   },
 });
 
-export const uploadErrorHandler = (err, req, res, next) => {
+const uploadErrorHandler = (err, req, res, next) => {
   if (err instanceof multer.MulterError) {
     if (err.code === "LIMIT_FILE_SIZE") {
       const isVideoRoute = req.baseUrl?.includes("banner-videos");
@@ -103,3 +98,8 @@ export const uploadErrorHandler = (err, req, res, next) => {
   }
   next();
 };
+
+module.exports.upload = upload;
+module.exports.videoUpload = videoUpload;
+module.exports.productUpload = productUpload;
+module.exports.uploadErrorHandler = uploadErrorHandler;

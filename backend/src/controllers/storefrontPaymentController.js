@@ -1,14 +1,12 @@
-import crypto from "crypto";
-import Razorpay from "razorpay";
-import { query, getConnection } from "../config/db.js";
-import { generateOrderNumber } from "../helpers/generateHelper.js";
-import { successResponse, errorResponse } from "../helpers/responseHelper.js";
-import { getStoreId } from "../helpers/storeHelper.js";
-import { cartWhereClause, resolveCartScope } from "../helpers/cartHelper.js";
-import { recordCouponUsage } from "./couponController.js";
-import logger from "../config/logger.js";
-
-
+const crypto = require("crypto");
+const Razorpay = require("razorpay");
+const { query, getConnection } = require("../config/db");
+const { generateOrderNumber } = require("../helpers/generateHelper");
+const { successResponse, errorResponse } = require("../helpers/responseHelper");
+const { getStoreId } = require("../helpers/storeHelper");
+const { cartWhereClause, resolveCartScope } = require("../helpers/cartHelper");
+const { recordCouponUsage } = require("./couponController");
+const logger = require("../config/logger");
 const getRazorpayConfig = async (storeId) => {
   const rows = await query(
     `SELECT razorpay_enabled, razorpay_key_id, razorpay_key_secret
@@ -285,7 +283,7 @@ const selectedImage =
   };
 };
 
-export const createPayment = async (req, res) => {
+const createPayment = async (req, res) => {
   const connection = await getConnection();
   try {
     const checkout = await prepareCheckoutTotals(req, connection);
@@ -526,7 +524,7 @@ return { order: orders[0], items: savedItems };
   // return { order: orders[0], items: savedItems };
 };
 
-export const verifyPayment = async (req, res) => {
+const verifyPayment = async (req, res) => {
   const connection = await getConnection();
   try {
     const { razorpay_payment_id, razorpay_order_id, razorpay_signature } = req.body;
@@ -610,3 +608,6 @@ export const verifyPayment = async (req, res) => {
     connection.release();
   }
 };
+
+module.exports.createPayment = createPayment;
+module.exports.verifyPayment = verifyPayment;

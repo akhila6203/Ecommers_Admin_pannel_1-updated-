@@ -1,13 +1,10 @@
-import fs from "fs";
-import path from "path";
-import mysql from "mysql2/promise";
-import dotenv from "dotenv";
-import { fileURLToPath } from "url";
-import logger from "./logger.js";
-
+const fs = require("fs");
+const path = require("path");
+const mysql = require("mysql2/promise");
+const dotenv = require("dotenv");
+const logger = require("./logger");
 dotenv.config();
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const MIGRATIONS_DIR = path.join(__dirname, "../../migrations");
 
 async function getMigrationConnection() {
@@ -72,7 +69,7 @@ async function bootstrapExistingDatabase(connection, files) {
   }
 }
 
-export async function runPendingMigrations() {
+async function runPendingMigrations() {
   const connection = await getMigrationConnection();
   try {
     await ensureMigrationTable(connection);
@@ -106,3 +103,5 @@ export async function runPendingMigrations() {
     await connection.end();
   }
 }
+
+module.exports.runPendingMigrations = runPendingMigrations;

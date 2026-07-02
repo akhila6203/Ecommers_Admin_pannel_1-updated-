@@ -1,7 +1,6 @@
-import logger from "../config/logger.js";
-import { errorResponse } from "../helpers/responseHelper.js";
-
-export const errorHandler = (err, req, res, next) => {
+const logger = require("../config/logger");
+const { errorResponse } = require("../helpers/responseHelper");
+const errorHandler = (err, req, res, next) => {
   logger.error(err.stack || err.message);
 
   if (err.code === "ER_DUP_ENTRY") {
@@ -19,6 +18,9 @@ export const errorHandler = (err, req, res, next) => {
   return errorResponse(res, process.env.NODE_ENV === "production" ? "Internal Server Error" : err.message, 500);
 };
 
-export const notFoundHandler = (req, res) => {
+const notFoundHandler = (req, res) => {
   return errorResponse(res, `Route ${req.originalUrl} not found`, 404);
 };
+
+module.exports.errorHandler = errorHandler;
+module.exports.notFoundHandler = notFoundHandler;

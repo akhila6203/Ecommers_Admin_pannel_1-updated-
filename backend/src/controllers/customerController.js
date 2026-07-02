@@ -1,10 +1,9 @@
-import { query } from "../config/db.js";
-import { hashPassword } from "../helpers/passwordHelper.js";
-import { successResponse, errorResponse, paginatedResponse } from "../helpers/responseHelper.js";
-import { getStoreId } from "../helpers/storeHelper.js";
-import logger from "../config/logger.js";
-
-export const getCustomers = async (req, res) => {
+const { query } = require("../config/db");
+const { hashPassword } = require("../helpers/passwordHelper");
+const { successResponse, errorResponse, paginatedResponse } = require("../helpers/responseHelper");
+const { getStoreId } = require("../helpers/storeHelper");
+const logger = require("../config/logger");
+const getCustomers = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const page = parseInt(req.query.page) || 1;
@@ -50,7 +49,7 @@ export const getCustomers = async (req, res) => {
   }
 };
 
-export const getCustomer = async (req, res) => {
+const getCustomer = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const customers = await query("SELECT * FROM customers WHERE id = ? AND store_id = ?", [req.params.id, storeId]);
@@ -93,7 +92,7 @@ export const getCustomer = async (req, res) => {
   }
 };
 
-export const createCustomer = async (req, res) => {
+const createCustomer = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const { first_name, last_name, email, password, phone, gender, date_of_birth } = req.body;
@@ -114,7 +113,7 @@ export const createCustomer = async (req, res) => {
   }
 };
 
-export const updateCustomer = async (req, res) => {
+const updateCustomer = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const { first_name, last_name, phone, gender, date_of_birth, status, notes } = req.body;
@@ -129,7 +128,7 @@ export const updateCustomer = async (req, res) => {
   }
 };
 
-export const blockCustomer = async (req, res) => {
+const blockCustomer = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const customers = await query("SELECT id, status FROM customers WHERE id = ? AND store_id = ?", [req.params.id, storeId]);
@@ -143,7 +142,7 @@ export const blockCustomer = async (req, res) => {
   }
 };
 
-export const deleteCustomer = async (req, res) => {
+const deleteCustomer = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     await query("DELETE FROM customers WHERE id = ? AND store_id = ?", [req.params.id, storeId]);
@@ -154,7 +153,7 @@ export const deleteCustomer = async (req, res) => {
   }
 };
 
-export const getCustomerAnalytics = async (req, res) => {
+const getCustomerAnalytics = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const [total] = await query("SELECT COUNT(*) as total FROM customers WHERE store_id = ?", [storeId]);
@@ -178,3 +177,11 @@ export const getCustomerAnalytics = async (req, res) => {
     return errorResponse(res, "Failed to fetch analytics", 500);
   }
 };
+
+module.exports.getCustomers = getCustomers;
+module.exports.getCustomer = getCustomer;
+module.exports.createCustomer = createCustomer;
+module.exports.updateCustomer = updateCustomer;
+module.exports.blockCustomer = blockCustomer;
+module.exports.deleteCustomer = deleteCustomer;
+module.exports.getCustomerAnalytics = getCustomerAnalytics;

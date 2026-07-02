@@ -1,12 +1,11 @@
-import express from "express";
-import { authenticate } from "../middleware/authMiddleware.js";
-import { authorize } from "../middleware/roleMiddleware.js";
-import { upload, uploadErrorHandler } from "../middleware/uploadMiddleware.js";
-import {
+const express = require("express");
+const { authenticate } = require("../middleware/authMiddleware");
+const { authorize } = require("../middleware/roleMiddleware");
+const { upload, uploadErrorHandler } = require("../middleware/uploadMiddleware");
+const {
   getAdmins, getAdmin, createAdmin, updateAdmin, deleteAdmin,
   getRoles, createRole, updateRole, deleteRole, getPermissions,
-} from "../controllers/adminController.js";
-
+} = require("../controllers/adminController");
 const router = express.Router();
 
 router.get("/roles", authenticate, authorize("super_admin"), getRoles);
@@ -21,4 +20,4 @@ router.post("/", authenticate, authorize("super_admin"), upload.single("avatar")
 router.put("/:id", authenticate, authorize("super_admin"), upload.single("avatar"), uploadErrorHandler, updateAdmin);
 router.delete("/:id", authenticate, authorize("super_admin"), deleteAdmin);
 
-export default router;
+module.exports = router;

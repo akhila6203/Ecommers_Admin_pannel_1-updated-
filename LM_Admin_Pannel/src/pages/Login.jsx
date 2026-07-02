@@ -27,16 +27,20 @@ export default function Login() {
 
     setLoading(true);
     try {
-      const result = await login(email, password);
-      const { token, admin, refreshToken } = result.data;
+      await login(email, password);
+navigate("/");
+      // const result = await login(email, password);
 
-      localStorage.setItem("lm_admin_token", token);
-      localStorage.setItem("lm_admin_user", JSON.stringify(admin));
-      if (refreshToken) {
-        localStorage.setItem("lm_admin_refresh_token", refreshToken);
-      }
+      // await login(email, password);
+      //   navigate("/");
+      // const { token, admin, refreshToken } = result.data;
+      // localStorage.setItem("lm_admin_token", token);
+      // localStorage.setItem("lm_admin_user", JSON.stringify(admin));
+      // if (refreshToken) {
+      //   localStorage.setItem("lm_admin_refresh_token", refreshToken);
+      // }
 
-      navigate("/");
+      // navigate("/");
     } catch (err) {
       const message =
         err.response?.data?.message ||

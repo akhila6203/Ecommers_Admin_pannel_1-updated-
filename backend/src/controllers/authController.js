@@ -1,28 +1,30 @@
-import bcrypt from "bcryptjs";
-import { query } from "../config/db.js";
-import { generateToken, generateRefreshToken, verifyRefreshToken, generateRandomToken } from "../helpers/jwtHelper.js";
-import { hashPassword, comparePassword } from "../helpers/passwordHelper.js";
-import { successResponse, errorResponse } from "../helpers/responseHelper.js";
-import { activityLog } from "../middleware/auditMiddleware.js";
-import logger from "../config/logger.js";
-
+const bcrypt = require("bcryptjs");
+const { query } = require("../config/db");
+const { generateToken, generateRefreshToken, verifyRefreshToken, generateRandomToken } = require("../helpers/jwtHelper");
+const { hashPassword, comparePassword } = require("../helpers/passwordHelper");
+const { successResponse, errorResponse } = require("../helpers/responseHelper");
+const { activityLog } = require("../middleware/auditMiddleware");
+const logger = require("../config/logger");
 // @desc    Admin Login
 // @route   POST /api/auth/login
 
 
-export const login = async (req, res) => {
+const login = async (req, res) => {
   try {
     const { email, password } = req.body;
+const loginEmail = String(email || "").trim().toLowerCase();
 
-    const admins = await query(
-      "SELECT id, store_id, name, email, password, role, status, avatar FROM admins WHERE email = ? AND deleted_at IS NULL",
-      [email]
-    );
+const admins = await query(
+  "SELECT id, store_id, name, email, password, role, status, avatar FROM admins WHERE LOWER(email) = ? AND deleted_at IS NULL",
+  [loginEmail]
+);
+    // const { email, password } = req.body;
+
     // const admins = await query(
-    //   "SELECT id, store_id, name, email, password, role, status, avatar FROM admins WHERE email = ? AND deleted_at IS NULL"
-    //   // "SELECT id, name, email, password, role, status, avatar FROM admins WHERE email = ? AND deleted_at IS NULL",
+    //   "SELECT id, store_id, name, email, password, role, status, avatar FROM admins WHERE email = ? AND deleted_at IS NULL",
     //   [email]
     // );
+    
 
     if (!admins.length) {
       return errorResponse(res, "Invalid email or password", 401);
@@ -44,12 +46,18 @@ console.log("DB HASH:", admin.password);
     }
 
     let allowedStoreIds = [];
-      if (admin.role === "super_admin") {
-        const stores = await query("SELECT id FROM stores WHERE status = 'active'");
-        allowedStoreIds = stores.map((s) => Number(s.id));
-      } else {
-        allowedStoreIds = [Number(admin.store_id || 1)];
-      }
+
+if (admin.role === "super_admin") {
+  try {
+    const stores = await query("SELECT id FROM stores WHERE status = 'active'");
+    allowedStoreIds = stores.map((s) => Number(s.id));
+  } catch {
+    allowedStoreIds = [];
+  }
+} else {
+  allowedStoreIds = [Number(admin.store_id || 1)];
+}
+    
 
     // const tokenPayload = { id: admin.id, email: admin.email, role: admin.role, name: admin.name };
     const tokenPayload = {
@@ -77,19 +85,44 @@ console.log("DB HASH:", admin.password);
 
     await activityLog(admin.id, "login", "Admin logged in");
 
-    return successResponse(res, {
-      admin: {
-        id: admin.id,
-        store_id: admin.role === "super_admin" ? null : Number(admin.store_id || 1),
-        allowed_store_ids: allowedStoreIds,
-        name: admin.name,
-        email: admin.email,
-        role: admin.role,
-        avatar: admin.avatar,
-      },
-      token,
-      refreshToken,
-    }, "Login successful");
+    res.cookie("lm_admin_token", token, {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+  maxAge: 60 * 60 * 1000,
+});
+
+res.cookie("lm_admin_refresh_token", refreshToken, {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+});
+
+return successResponse(res, {
+  admin: {
+    id: admin.id,
+    store_id: admin.role === "super_admin" ? null : Number(admin.store_id || 1),
+    allowed_store_ids: allowedStoreIds,
+    name: admin.name,
+    email: admin.email,
+    role: admin.role,
+    avatar: admin.avatar,
+  },
+}, "Login successful");
+    // return successResponse(res, {
+    //   admin: {
+    //     id: admin.id,
+    //     store_id: admin.role === "super_admin" ? null : Number(admin.store_id || 1),
+    //     allowed_store_ids: allowedStoreIds,
+    //     name: admin.name,
+    //     email: admin.email,
+    //     role: admin.role,
+    //     avatar: admin.avatar,
+    //   },
+    //   token,
+    //   refreshToken,
+    // }, "Login successful");
   } catch (error) {
     logger.error("Login error:", error);
     return errorResponse(res, "Login failed", 500);
@@ -98,27 +131,55 @@ console.log("DB HASH:", admin.password);
 
 // @desc    Admin Logout
 // @route   POST /api/auth/logout
-export const logout = async (req, res) => {
+const logout = async (req, res) => {
   try {
-    const authHeader = req.headers.authorization;
-    if (authHeader) {
-      const token = authHeader.split(" ")[1];
-      // Revoke refresh tokens
-      if (req.admin) {
-        await query("UPDATE refresh_tokens SET revoked_at = NOW() WHERE admin_id = ? AND revoked_at IS NULL", [req.admin.id]);
-        await activityLog(req.admin.id, "logout", "Admin logged out");
-      }
+    if (req.admin) {
+      await query(
+        "UPDATE refresh_tokens SET revoked_at = NOW() WHERE admin_id = ? AND revoked_at IS NULL",
+        [req.admin.id]
+      );
+      await activityLog(req.admin.id, "logout", "Admin logged out");
     }
+
+    res.clearCookie("lm_admin_token", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    });
+
+    res.clearCookie("lm_admin_refresh_token", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    });
+
     return successResponse(res, null, "Logged out successfully");
   } catch (error) {
     logger.error("Logout error:", error);
     return errorResponse(res, "Logout failed", 500);
   }
 };
+// const logout = async (req, res) => {
+//   try {
+//     const authHeader = req.headers.authorization;
+//     if (authHeader) {
+//       const token = authHeader.split(" ")[1];
+//       // Revoke refresh tokens
+//       if (req.admin) {
+//         await query("UPDATE refresh_tokens SET revoked_at = NOW() WHERE admin_id = ? AND revoked_at IS NULL", [req.admin.id]);
+//         await activityLog(req.admin.id, "logout", "Admin logged out");
+//       }
+//     }
+//     return successResponse(res, null, "Logged out successfully");
+//   } catch (error) {
+//     logger.error("Logout error:", error);
+//     return errorResponse(res, "Logout failed", 500);
+//   }
+// };
 
 // @desc    Forgot Password
 // @route   POST /api/auth/forgot-password
-export const forgotPassword = async (req, res) => {
+const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
 
@@ -148,7 +209,7 @@ export const forgotPassword = async (req, res) => {
 
 // @desc    Reset Password
 // @route   POST /api/auth/reset-password
-export const resetPassword = async (req, res) => {
+const resetPassword = async (req, res) => {
   try {
     const { token, password } = req.body;
 
@@ -175,7 +236,7 @@ export const resetPassword = async (req, res) => {
 
 // @desc    Change Password
 // @route   POST /api/auth/change-password
-export const changePassword = async (req, res) => {
+const changePassword = async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
     const adminId = req.admin.id;
@@ -204,7 +265,7 @@ export const changePassword = async (req, res) => {
 
 // @desc    Refresh Token
 // @route   POST /api/auth/refresh-token
-export const refreshToken = async (req, res) => {
+const refreshToken = async (req, res) => {
   try {
     const { refreshToken: token } = req.body;
     if (!token) {
@@ -271,7 +332,7 @@ const tokenPayload = {
 
 // @desc    Get Current Admin Profile
 // @route   GET /api/auth/profile
-export const getProfile = async (req, res) => {
+const getProfile = async (req, res) => {
   try {
     const admins = await query(
   "SELECT id, store_id, name, email, phone, role, avatar, status, last_login_at FROM admins WHERE id = ?",
@@ -296,7 +357,7 @@ export const getProfile = async (req, res) => {
 
 // @desc    Update Admin Profile
 // @route   PUT /api/auth/profile
-export const updateProfile = async (req, res) => {
+const updateProfile = async (req, res) => {
   try {
     const { name, phone } = req.body;
     const adminId = req.admin.id;
@@ -313,17 +374,16 @@ export const updateProfile = async (req, res) => {
 };
 
 
-// import bcrypt from "bcryptjs";
-// import { query } from "../config/db.js";
-// import { generateToken, generateRefreshToken, verifyRefreshToken, generateRandomToken } from "../helpers/jwtHelper.js";
-// import { hashPassword, comparePassword } from "../helpers/passwordHelper.js";
-// import { successResponse, errorResponse } from "../helpers/responseHelper.js";
-// import { activityLog } from "../middleware/auditMiddleware.js";
-// import logger from "../config/logger.js";
-
+// const bcrypt = require("bcryptjs");
+// const { query } = require("../config/db");
+// const { generateToken, generateRefreshToken, verifyRefreshToken, generateRandomToken } = require("../helpers/jwtHelper");
+// const { hashPassword, comparePassword } = require("../helpers/passwordHelper");
+// const { successResponse, errorResponse } = require("../helpers/responseHelper");
+// const { activityLog } = require("../middleware/auditMiddleware");
+// const logger = require("../config/logger");
 // // @desc    Admin Login
 // // @route   POST /api/auth/login
-// export const login = async (req, res) => {
+// const login = async (req, res) => {
 //   try {
 //     const { email, password } = req.body;
 
@@ -384,7 +444,7 @@ export const updateProfile = async (req, res) => {
 
 // // @desc    Admin Logout
 // // @route   POST /api/auth/logout
-// export const logout = async (req, res) => {
+// const logout = async (req, res) => {
 //   try {
 //     const authHeader = req.headers.authorization;
 //     if (authHeader) {
@@ -404,7 +464,7 @@ export const updateProfile = async (req, res) => {
 
 // // @desc    Forgot Password
 // // @route   POST /api/auth/forgot-password
-// export const forgotPassword = async (req, res) => {
+// const forgotPassword = async (req, res) => {
 //   try {
 //     const { email } = req.body;
 
@@ -433,7 +493,7 @@ export const updateProfile = async (req, res) => {
 
 // // @desc    Reset Password
 // // @route   POST /api/auth/reset-password
-// export const resetPassword = async (req, res) => {
+// const resetPassword = async (req, res) => {
 //   try {
 //     const { token, password } = req.body;
 
@@ -460,7 +520,7 @@ export const updateProfile = async (req, res) => {
 
 // // @desc    Change Password
 // // @route   POST /api/auth/change-password
-// export const changePassword = async (req, res) => {
+// const changePassword = async (req, res) => {
 //   try {
 //     const { currentPassword, newPassword } = req.body;
 //     const adminId = req.admin.id;
@@ -489,7 +549,7 @@ export const updateProfile = async (req, res) => {
 
 // // @desc    Refresh Token
 // // @route   POST /api/auth/refresh-token
-// export const refreshToken = async (req, res) => {
+// const refreshToken = async (req, res) => {
 //   try {
 //     const { refreshToken: token } = req.body;
 //     if (!token) {
@@ -539,7 +599,7 @@ export const updateProfile = async (req, res) => {
 
 // // @desc    Get Current Admin Profile
 // // @route   GET /api/auth/profile
-// export const getProfile = async (req, res) => {
+// const getProfile = async (req, res) => {
 //   try {
 //     const admins = await query(
 //       "SELECT id, name, email, phone, role, avatar, status, last_login_at FROM admins WHERE id = ?",
@@ -559,7 +619,7 @@ export const updateProfile = async (req, res) => {
 
 // // @desc    Update Admin Profile
 // // @route   PUT /api/auth/profile
-// export const updateProfile = async (req, res) => {
+// const updateProfile = async (req, res) => {
 //   try {
 //     const { name, phone } = req.body;
 //     const adminId = req.admin.id;
@@ -574,3 +634,12 @@ export const updateProfile = async (req, res) => {
 //     return errorResponse(res, "Failed to update profile", 500);
 //   }
 // };
+
+module.exports.login = login;
+module.exports.logout = logout;
+module.exports.forgotPassword = forgotPassword;
+module.exports.resetPassword = resetPassword;
+module.exports.changePassword = changePassword;
+module.exports.refreshToken = refreshToken;
+module.exports.getProfile = getProfile;
+module.exports.updateProfile = updateProfile;

@@ -1,6 +1,5 @@
-import xss from "xss";
-
-export const sanitizeInput = (input) => {
+const xss = require("xss");
+const sanitizeInput = (input) => {
   if (typeof input === "string") {
     return xss(input.trim());
   }
@@ -17,9 +16,12 @@ export const sanitizeInput = (input) => {
   return input;
 };
 
-export const sanitizeMiddleware = (req, res, next) => {
+const sanitizeMiddleware = (req, res, next) => {
   if (req.body) req.body = sanitizeInput(req.body);
   if (req.query) req.query = sanitizeInput(req.query);
   if (req.params) req.params = sanitizeInput(req.params);
   next();
 };
+
+module.exports.sanitizeInput = sanitizeInput;
+module.exports.sanitizeMiddleware = sanitizeMiddleware;

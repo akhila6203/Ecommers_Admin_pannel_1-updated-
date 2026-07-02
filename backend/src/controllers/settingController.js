@@ -1,12 +1,11 @@
-import { query } from "../config/db.js";
-import { successResponse, errorResponse } from "../helpers/responseHelper.js";
-import { getStoreId } from "../helpers/storeHelper.js";
-import logger from "../config/logger.js";
-import nodemailer from "nodemailer";
-
+const { query } = require("../config/db");
+const { successResponse, errorResponse } = require("../helpers/responseHelper");
+const { getStoreId } = require("../helpers/storeHelper");
+const logger = require("../config/logger");
+const nodemailer = require("nodemailer");
 // @desc    Get all settings grouped
 // @route   GET /api/settings
-export const getSettings = async (req, res) => {
+const getSettings = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const group = req.query.group || "";
@@ -40,7 +39,7 @@ export const getSettings = async (req, res) => {
 
 // @desc    Get settings by group
 // @route   GET /api/settings/:group
-export const getSettingsByGroup = async (req, res) => {
+const getSettingsByGroup = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const settings = await query(
@@ -64,7 +63,7 @@ export const getSettingsByGroup = async (req, res) => {
 
 // @desc    Update settings
 // @route   PUT /api/settings
-export const updateSettings = async (req, res) => {
+const updateSettings = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const { settings } = req.body;
@@ -108,7 +107,7 @@ export const updateSettings = async (req, res) => {
 
 // @desc    Bulk update settings (by group)
 // @route   PUT /api/settings/:group
-export const updateSettingsByGroup = async (req, res) => {
+const updateSettingsByGroup = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const { group } = req.params;
@@ -137,7 +136,7 @@ export const updateSettingsByGroup = async (req, res) => {
 
 // @desc    Get store information (public)
 // @route   GET /api/settings/public
-export const getPublicSettings = async (req, res) => {
+const getPublicSettings = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const general = await query("SELECT key_name, value FROM settings WHERE store_id = ? AND group_name IN ('general', 'seo', 'social')", [storeId]);
@@ -154,7 +153,7 @@ export const getPublicSettings = async (req, res) => {
 
 // @desc    Test Email Settings (SMTP)
 // @route   POST /api/settings/test-email
-export const testEmailSettings = async (req, res) => {
+const testEmailSettings = async (req, res) => {
   try {
     const { smtp_host, smtp_port, smtp_username, smtp_password, sender_email } = req.body;
     
@@ -192,7 +191,7 @@ export const testEmailSettings = async (req, res) => {
 
 // @desc    Test Shiprocket Connection
 // @route   POST /api/settings/test-shiprocket
-export const testShiprocketConnection = async (req, res) => {
+const testShiprocketConnection = async (req, res) => {
   try {
     const { email, password, channel_id } = req.body;
     if (!email || !password || !channel_id) {
@@ -209,3 +208,11 @@ export const testShiprocketConnection = async (req, res) => {
     return errorResponse(res, `Shiprocket connection failed: ${error.message}`, 400);
   }
 };
+
+module.exports.getSettings = getSettings;
+module.exports.getSettingsByGroup = getSettingsByGroup;
+module.exports.updateSettings = updateSettings;
+module.exports.updateSettingsByGroup = updateSettingsByGroup;
+module.exports.getPublicSettings = getPublicSettings;
+module.exports.testEmailSettings = testEmailSettings;
+module.exports.testShiprocketConnection = testShiprocketConnection;

@@ -1,10 +1,9 @@
-import { query } from "../config/db.js";
-import { successResponse, errorResponse } from "../helpers/responseHelper.js";
-import {
+const { query } = require("../config/db");
+const { successResponse, errorResponse } = require("../helpers/responseHelper");
+const {
   resolveCartScope,
   cartWhereClause,
-} from "../helpers/cartHelper.js";
-
+} = require("../helpers/cartHelper");
 const safeJsonParse = (value, fallback = {}) => {
   try {
     if (!value) return fallback;
@@ -33,7 +32,7 @@ const requireCartScope = (req, res) => {
   return { scope, where };
 };
 
-export const getCart = async (req, res) => {
+const getCart = async (req, res) => {
   try {
     const ctx = requireCartScope(req, res);
     if (!ctx) return;
@@ -116,7 +115,7 @@ export const getCart = async (req, res) => {
   }
 };
 
-export const addToCart = async (req, res) => {
+const addToCart = async (req, res) => {
   try {
     const ctx = requireCartScope(req, res);
     if (!ctx) return;
@@ -218,7 +217,7 @@ export const addToCart = async (req, res) => {
   }
 };
 
-export const updateCartItem = async (req, res) => {
+const updateCartItem = async (req, res) => {
   try {
     const ctx = requireCartScope(req, res);
     if (!ctx) return;
@@ -274,7 +273,7 @@ export const updateCartItem = async (req, res) => {
   }
 };
 
-export const removeCartItem = async (req, res) => {
+const removeCartItem = async (req, res) => {
   try {
     const ctx = requireCartScope(req, res);
     if (!ctx) return;
@@ -302,7 +301,7 @@ export const removeCartItem = async (req, res) => {
   }
 };
 
-export const clearCart = async (req, res) => {
+const clearCart = async (req, res) => {
   try {
     const ctx = requireCartScope(req, res);
     if (!ctx) return;
@@ -317,3 +316,9 @@ export const clearCart = async (req, res) => {
     return errorResponse(res, error.message || "Failed to clear cart", 500);
   }
 };
+
+module.exports.getCart = getCart;
+module.exports.addToCart = addToCart;
+module.exports.updateCartItem = updateCartItem;
+module.exports.removeCartItem = removeCartItem;
+module.exports.clearCart = clearCart;

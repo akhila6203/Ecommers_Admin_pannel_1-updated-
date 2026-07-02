@@ -1,11 +1,10 @@
-import express from "express";
-import { authenticate } from "../middleware/authMiddleware.js";
-import { authorize } from "../middleware/roleMiddleware.js";
-import {
+const express = require("express");
+const { authenticate } = require("../middleware/authMiddleware");
+const { authorize } = require("../middleware/roleMiddleware");
+const {
   getSalesReport, getOrderReport, getCustomerReport,
   getProductReport, getInventoryReport, getGstReport, getReportSummary,
-} from "../controllers/reportController.js";
-
+} = require("../controllers/reportController");
 const router = express.Router();
 
 router.get("/summary", authenticate, authorize("super_admin", "admin"), getReportSummary);
@@ -16,4 +15,4 @@ router.get("/products", authenticate, authorize("super_admin", "admin", "manager
 router.get("/inventory", authenticate, authorize("super_admin", "admin", "manager"), getInventoryReport);
 router.get("/gst", authenticate, authorize("super_admin", "admin"), getGstReport);
 
-export default router;
+module.exports = router;

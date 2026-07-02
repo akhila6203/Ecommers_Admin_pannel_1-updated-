@@ -1,8 +1,7 @@
-import { query } from "../config/db.js";
-import { successResponse, errorResponse, paginatedResponse } from "../helpers/responseHelper.js";
-import { getStoreId } from "../helpers/storeHelper.js";
-import logger from "../config/logger.js";
-
+const { query } = require("../config/db");
+const { successResponse, errorResponse, paginatedResponse } = require("../helpers/responseHelper");
+const { getStoreId } = require("../helpers/storeHelper");
+const logger = require("../config/logger");
 const COUPON_COLUMNS =
   "id, code, type, value, minimum_order_amount, maximum_discount, usage_limit, used_count, per_user_limit, is_for_new_customers, start_date, expiry_date, status, description, created_at, updated_at";
 
@@ -17,7 +16,7 @@ const calculateDiscount = (coupon, orderAmount) => {
   return Math.round(discount * 100) / 100;
 };
 
-export const getCoupons = async (req, res) => {
+const getCoupons = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const page = parseInt(req.query.page) || 1;
@@ -51,7 +50,7 @@ export const getCoupons = async (req, res) => {
   }
 };
 
-export const getCoupon = async (req, res) => {
+const getCoupon = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const coupons = await query(`SELECT ${COUPON_COLUMNS} FROM coupons WHERE id = ? AND store_id = ?`, [req.params.id, storeId]);
@@ -63,7 +62,7 @@ export const getCoupon = async (req, res) => {
   }
 };
 
-export const createCoupon = async (req, res) => {
+const createCoupon = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const {
@@ -107,7 +106,7 @@ export const createCoupon = async (req, res) => {
   }
 };
 
-export const updateCoupon = async (req, res) => {
+const updateCoupon = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const {
@@ -157,7 +156,7 @@ export const updateCoupon = async (req, res) => {
   }
 };
 
-export const deleteCoupon = async (req, res) => {
+const deleteCoupon = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const existing = await query("SELECT id FROM coupons WHERE id = ? AND store_id = ?", [req.params.id, storeId]);
@@ -171,7 +170,7 @@ export const deleteCoupon = async (req, res) => {
   }
 };
 
-export const validateCoupon = async (req, res) => {
+const validateCoupon = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const code = req.body.code;
@@ -224,7 +223,7 @@ export const validateCoupon = async (req, res) => {
   }
 };
 
-export const getCouponUsage = async (req, res) => {
+const getCouponUsage = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const couponId = req.params.id;
@@ -274,7 +273,7 @@ export const getCouponUsage = async (req, res) => {
   }
 };
 
-export const getAllCouponUsage = async (req, res) => {
+const getAllCouponUsage = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const page = parseInt(req.query.page) || 1;
@@ -317,7 +316,7 @@ export const getAllCouponUsage = async (req, res) => {
   }
 };
 
-export const recordCouponUsage = async (connection, { couponCode, customerId, orderId, discountAmount, storeId = 1 }) => {
+const recordCouponUsage = async (connection, { couponCode, customerId, orderId, discountAmount, storeId = 1 }) => {
   if (!couponCode) return;
 
   const [coupons] = await connection.query(
@@ -336,3 +335,13 @@ export const recordCouponUsage = async (connection, { couponCode, customerId, or
     [couponId, storeId]
   );
 };
+
+module.exports.getCoupons = getCoupons;
+module.exports.getCoupon = getCoupon;
+module.exports.createCoupon = createCoupon;
+module.exports.updateCoupon = updateCoupon;
+module.exports.deleteCoupon = deleteCoupon;
+module.exports.validateCoupon = validateCoupon;
+module.exports.getCouponUsage = getCouponUsage;
+module.exports.getAllCouponUsage = getAllCouponUsage;
+module.exports.recordCouponUsage = recordCouponUsage;

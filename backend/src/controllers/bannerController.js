@@ -1,9 +1,8 @@
-import { query } from "../config/db.js";
-import { successResponse, errorResponse, paginatedResponse } from "../helpers/responseHelper.js";
-import { normalizeBannerImage } from "../helpers/imagePathHelper.js";
-import { getStoreId } from "../helpers/storeHelper.js";
-import logger from "../config/logger.js";
-
+const { query } = require("../config/db");
+const { successResponse, errorResponse, paginatedResponse } = require("../helpers/responseHelper");
+const { normalizeBannerImage } = require("../helpers/imagePathHelper");
+const { getStoreId } = require("../helpers/storeHelper");
+const logger = require("../config/logger");
 const BANNER_COLUMNS =
   "id, title, subtitle, subtitle1, description, button_text, button_link, image, status, sort_order, created_at, updated_at";
 
@@ -21,7 +20,7 @@ const pickBannerFields = (body, existing = {}) => ({
   button_link: pickText(body.button_link, existing.button_link || ""),
 });
 
-export const getBanners = async (req, res) => {
+const getBanners = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const page = parseInt(req.query.page) || 1;
@@ -41,7 +40,7 @@ export const getBanners = async (req, res) => {
   }
 };
 
-export const getBanner = async (req, res) => {
+const getBanner = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const banners = await query(
@@ -56,7 +55,7 @@ export const getBanner = async (req, res) => {
   }
 };
 
-export const createBanner = async (req, res) => {
+const createBanner = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const fields = pickBannerFields(req.body);
@@ -90,7 +89,7 @@ export const createBanner = async (req, res) => {
   }
 };
 
-export const updateBanner = async (req, res) => {
+const updateBanner = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const existing = await query(
@@ -124,7 +123,7 @@ export const updateBanner = async (req, res) => {
   }
 };
 
-export const deleteBanner = async (req, res) => {
+const deleteBanner = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const existing = await query("SELECT id FROM banners WHERE id = ? AND store_id = ?", [req.params.id, storeId]);
@@ -137,3 +136,9 @@ export const deleteBanner = async (req, res) => {
     return errorResponse(res, "Failed to delete banner", 500);
   }
 };
+
+module.exports.getBanners = getBanners;
+module.exports.getBanner = getBanner;
+module.exports.createBanner = createBanner;
+module.exports.updateBanner = updateBanner;
+module.exports.deleteBanner = deleteBanner;

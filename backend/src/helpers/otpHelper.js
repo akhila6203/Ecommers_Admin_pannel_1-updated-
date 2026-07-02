@@ -1,10 +1,9 @@
-import crypto from "crypto";
-import { hashPassword, comparePassword } from "./passwordHelper.js";
-import { generateToken, verifyToken } from "./jwtHelper.js";
+const crypto = require("crypto");
+const { hashPassword, comparePassword } = require("./passwordHelper");
+const { generateToken, verifyToken } = require("./jwtHelper");
+const INDIAN_PHONE_REGEX = /^[6-9]\d{9}$/;
 
-export const INDIAN_PHONE_REGEX = /^[6-9]\d{9}$/;
-
-export const normalizeIndianPhone = (phone) => {
+const normalizeIndianPhone = (phone) => {
   if (!phone) return "";
   const digits = String(phone).replace(/\D/g, "");
   if (digits.length === 12 && digits.startsWith("91")) return digits.slice(2);
@@ -12,21 +11,21 @@ export const normalizeIndianPhone = (phone) => {
   return digits.length >= 10 ? digits.slice(-10) : digits;
 };
 
-export const isValidIndianPhone = (phone) => INDIAN_PHONE_REGEX.test(normalizeIndianPhone(phone));
+const isValidIndianPhone = (phone) => INDIAN_PHONE_REGEX.test(normalizeIndianPhone(phone));
 
-export const generateOtpCode = () => String(Math.floor(100000 + Math.random() * 900000));
+const generateOtpCode = () => String(Math.floor(100000 + Math.random() * 900000));
 
-export const hashOtp = async (otp) => hashPassword(String(otp));
+const hashOtp = async (otp) => hashPassword(String(otp));
 
-export const compareOtp = async (otp, otpHash) => comparePassword(String(otp), otpHash);
+const compareOtp = async (otp, otpHash) => comparePassword(String(otp), otpHash);
 
-export const getOtpExpiryDate = (minutes = 5) => {
+const getOtpExpiryDate = (minutes = 5) => {
   const expires = new Date();
   expires.setMinutes(expires.getMinutes() + minutes);
   return expires;
 };
 
-export const createPhoneVerificationToken = (payload) =>
+const createPhoneVerificationToken = (payload) =>
   generateToken(
     {
       type: "phone_verification",
@@ -37,7 +36,7 @@ export const createPhoneVerificationToken = (payload) =>
     "10m"
   );
 
-export const verifyPhoneVerificationToken = (token, expected) => {
+const verifyPhoneVerificationToken = (token, expected) => {
   const decoded = verifyToken(token);
   if (decoded.type !== "phone_verification") {
     throw new Error("Invalid verification token");
@@ -54,5 +53,16 @@ export const verifyPhoneVerificationToken = (token, expected) => {
   return decoded;
 };
 
-export const hashResetToken = (token) =>
+const hashResetToken = (token) =>
   crypto.createHash("sha256").update(String(token)).digest("hex");
+
+module.exports.INDIAN_PHONE_REGEX = INDIAN_PHONE_REGEX;
+module.exports.normalizeIndianPhone = normalizeIndianPhone;
+module.exports.isValidIndianPhone = isValidIndianPhone;
+module.exports.generateOtpCode = generateOtpCode;
+module.exports.hashOtp = hashOtp;
+module.exports.compareOtp = compareOtp;
+module.exports.getOtpExpiryDate = getOtpExpiryDate;
+module.exports.createPhoneVerificationToken = createPhoneVerificationToken;
+module.exports.verifyPhoneVerificationToken = verifyPhoneVerificationToken;
+module.exports.hashResetToken = hashResetToken;

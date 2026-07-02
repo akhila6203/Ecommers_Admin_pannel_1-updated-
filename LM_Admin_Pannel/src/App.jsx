@@ -15,7 +15,7 @@ import Categories from "@/pages/Categories";
 import Collections from "@/pages/Collections";
 import Orders from "@/pages/Orders";
 import Customers from "@/pages/Customers";
-import Offers from "@/pages/Offers";
+// import Offers from "@/pages/Offers";
 import Conditions from "@/pages/Conditions";
 import Gallery from "@/pages/Gallery";
 import Settings from "@/pages/Settings";
@@ -64,7 +64,7 @@ const App = () => {
                   <Route path="/collections" element={<Collections />} />
                   <Route path="/orders" element={<Orders />} />
                   <Route path="/customers" element={<Customers />} />
-                  <Route path="/offers" element={<Offers />} />
+                  {/* <Route path="/offers" element={<Offers />} /> */}
                   <Route path="/conditions" element={<Conditions />} />
                   <Route path="/gallery" element={<Gallery />} />
                   <Route path="/settings" element={<Settings />} />

@@ -1,10 +1,9 @@
-import { query } from "../config/db.js";
-import { generateSlug } from "../helpers/slugHelper.js";
-import { successResponse, errorResponse, paginatedResponse } from "../helpers/responseHelper.js";
-import { getStoreId } from "../helpers/storeHelper.js";
-import logger from "../config/logger.js";
-
-export const getOffers = async (req, res) => {
+const { query } = require("../config/db");
+const { generateSlug } = require("../helpers/slugHelper");
+const { successResponse, errorResponse, paginatedResponse } = require("../helpers/responseHelper");
+const { getStoreId } = require("../helpers/storeHelper");
+const logger = require("../config/logger");
+const getOffers = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const page = parseInt(req.query.page) || 1;
@@ -28,7 +27,7 @@ export const getOffers = async (req, res) => {
   }
 };
 
-export const getOffer = async (req, res) => {
+const getOffer = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const offers = await query("SELECT * FROM offers WHERE id = ? AND store_id = ?", [req.params.id, storeId]);
@@ -40,7 +39,7 @@ export const getOffer = async (req, res) => {
   }
 };
 
-export const createOffer = async (req, res) => {
+const createOffer = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const { title, type, discount_type, discount_value, applicable_on, minimum_purchase, maximum_discount, start_date, end_date, is_featured, priority, status } = req.body;
@@ -60,7 +59,7 @@ export const createOffer = async (req, res) => {
   }
 };
 
-export const updateOffer = async (req, res) => {
+const updateOffer = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const { title, type, discount_type, discount_value, applicable_on, minimum_purchase, maximum_discount, start_date, end_date, is_featured, priority, status } = req.body;
@@ -77,7 +76,7 @@ export const updateOffer = async (req, res) => {
   }
 };
 
-export const deleteOffer = async (req, res) => {
+const deleteOffer = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const existing = await query("SELECT id FROM offers WHERE id = ? AND store_id = ?", [req.params.id, storeId]);
@@ -91,7 +90,7 @@ export const deleteOffer = async (req, res) => {
   }
 };
 
-export const getOfferAnalytics = async (req, res) => {
+const getOfferAnalytics = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const [active] = await query("SELECT COUNT(*) as total FROM offers WHERE store_id = ? AND status = 'active' AND start_date <= NOW() AND end_date >= NOW()", [storeId]);
@@ -103,3 +102,10 @@ export const getOfferAnalytics = async (req, res) => {
     return errorResponse(res, "Failed to fetch analytics", 500);
   }
 };
+
+module.exports.getOffers = getOffers;
+module.exports.getOffer = getOffer;
+module.exports.createOffer = createOffer;
+module.exports.updateOffer = updateOffer;
+module.exports.deleteOffer = deleteOffer;
+module.exports.getOfferAnalytics = getOfferAnalytics;

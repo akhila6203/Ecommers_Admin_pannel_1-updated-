@@ -1,12 +1,11 @@
-import { query } from "../config/db.js";
-import { successResponse, errorResponse, paginatedResponse } from "../helpers/responseHelper.js";
-import { getStoreId } from "../helpers/storeHelper.js";
-import logger from "../config/logger.js";
-
+const { query } = require("../config/db");
+const { successResponse, errorResponse, paginatedResponse } = require("../helpers/responseHelper");
+const { getStoreId } = require("../helpers/storeHelper");
+const logger = require("../config/logger");
 const VIDEO_COLUMNS =
   "id, store_id, title, video_url, video_path, status, sort_order, created_at, updated_at";
 
-export const getBannerVideos = async (req, res) => {
+const getBannerVideos = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const page = parseInt(req.query.page) || 1;
@@ -28,7 +27,7 @@ export const getBannerVideos = async (req, res) => {
   }
 };
 
-export const getBannerVideo = async (req, res) => {
+const getBannerVideo = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const videos = await query(
@@ -43,7 +42,7 @@ export const getBannerVideo = async (req, res) => {
   }
 };
 
-export const createBannerVideo = async (req, res) => {
+const createBannerVideo = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const { title, video_url, status, sort_order } = req.body;
@@ -82,7 +81,7 @@ export const createBannerVideo = async (req, res) => {
   }
 };
 
-export const updateBannerVideo = async (req, res) => {
+const updateBannerVideo = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const existing = await query(
@@ -127,7 +126,7 @@ export const updateBannerVideo = async (req, res) => {
   }
 };
 
-export const deleteBannerVideo = async (req, res) => {
+const deleteBannerVideo = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const existing = await query(
@@ -143,3 +142,9 @@ export const deleteBannerVideo = async (req, res) => {
     return errorResponse(res, "Failed to delete video", 500);
   }
 };
+
+module.exports.getBannerVideos = getBannerVideos;
+module.exports.getBannerVideo = getBannerVideo;
+module.exports.createBannerVideo = createBannerVideo;
+module.exports.updateBannerVideo = updateBannerVideo;
+module.exports.deleteBannerVideo = deleteBannerVideo;

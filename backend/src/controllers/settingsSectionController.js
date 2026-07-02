@@ -1,8 +1,7 @@
-import { query } from "../config/db.js";
-import { successResponse, errorResponse } from "../helpers/responseHelper.js";
-import { getStoreId } from "../helpers/storeHelper.js";
-import logger from "../config/logger.js";
-
+const { query } = require("../config/db");
+const { successResponse, errorResponse } = require("../helpers/responseHelper");
+const { getStoreId } = require("../helpers/storeHelper");
+const logger = require("../config/logger");
 const upsertSetting = async (groupName, key, value, type = "text", storeId = 1) => {
   const settingValue =
     type === "json" || typeof value === "object"
@@ -207,7 +206,7 @@ const migrateLegacyStore = async (result, storeId = 1) => {
   return result;
 };
 
-export const getStoreInformation = async (req, res) => {
+const getStoreInformation = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const row = await getStoreSettingsRow(storeId);
@@ -220,7 +219,7 @@ export const getStoreInformation = async (req, res) => {
   }
 };
 
-export const updateStoreInformation = async (req, res) => {
+const updateStoreInformation = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const data = { ...STORE_DEFAULTS, ...req.body };
@@ -241,12 +240,18 @@ const INTEGRATION_DEFAULTS = {
   razorpay_key_id: "",
   razorpay_key_secret: "",
   whatsapp_enabled: false,
-  whatsapp_provider: "360dialog",
-  whatsapp_api_key: "",
+whatsapp_provider: "360messenger",
+whatsapp_api_url: "https://api.360messenger.com/v2/sendMessage",
+whatsapp_api_key: "",
+// whatsapp_sender: "",
+// whatsapp_template_name: "",
+//   whatsapp_enabled: false,
+//   whatsapp_provider: "360dialog",
+//   whatsapp_api_key: "",
   whatsapp_phone_number: "",
-  whatsapp_template_name: "",
-  whatsapp_phone_number_id: "",
-whatsapp_business_account_id: "",
+//   whatsapp_template_name: "",
+//   whatsapp_phone_number_id: "",
+// whatsapp_business_account_id: "",
   shiprocket_enabled: false,
   shiprocket_email: "",
   shiprocket_password: "",
@@ -267,12 +272,18 @@ const INTEGRATION_DB_COLUMNS = {
   razorpay_key_id: "razorpay_key_id",
   razorpay_key_secret: "razorpay_key_secret",
   whatsapp_enabled: "whatsapp_enabled",
-  whatsapp_provider: "whatsapp_provider",
-  whatsapp_api_key: "whatsapp_api_key",
+whatsapp_provider: "whatsapp_provider",
+whatsapp_api_url: "whatsapp_api_url",
+whatsapp_api_key: "whatsapp_api_key",
+// whatsapp_sender: "whatsapp_sender",
+// whatsapp_template_name: "whatsapp_template_name",
+//   whatsapp_enabled: "whatsapp_enabled",
+//   whatsapp_provider: "whatsapp_provider",
+//   whatsapp_api_key: "whatsapp_api_key",
   whatsapp_phone_number: "whatsapp_phone_number",
-  whatsapp_template_name: "whatsapp_template_name",
-  whatsapp_phone_number_id: "whatsapp_phone_number_id",
-whatsapp_business_account_id: "whatsapp_business_account_id",
+//   whatsapp_template_name: "whatsapp_template_name",
+//   whatsapp_phone_number_id: "whatsapp_phone_number_id",
+// whatsapp_business_account_id: "whatsapp_business_account_id",
   shiprocket_enabled: "shiprocket_enabled",
   shiprocket_email: "shiprocket_email",
   shiprocket_password: "shiprocket_password",
@@ -377,7 +388,7 @@ const migrateLegacyIntegrations = async (result, storeId = 1) => {
   }
 };
 
-export const getIntegrationSettings = async (req, res) => {
+const getIntegrationSettings = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const row = await getIntegrationSettingsRow(storeId);
@@ -390,7 +401,7 @@ export const getIntegrationSettings = async (req, res) => {
   }
 };
 
-export const updateIntegrationSettings = async (req, res) => {
+const updateIntegrationSettings = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const saved = await saveIntegrationSettingsRow({ ...INTEGRATION_DEFAULTS, ...req.body }, storeId);
@@ -401,7 +412,7 @@ export const updateIntegrationSettings = async (req, res) => {
   }
 };
 
-export const getAboutUsSettings = async (req, res) => {
+const getAboutUsSettings = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const rows = await query(
@@ -419,7 +430,7 @@ export const getAboutUsSettings = async (req, res) => {
   }
 };
 
-export const updateAboutUsSettings = async (req, res) => {
+const updateAboutUsSettings = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const { sections } = req.body || {};
@@ -449,7 +460,7 @@ export const updateAboutUsSettings = async (req, res) => {
   }
 };
 
-export const getPrivacyPolicy = async (req, res) => {
+const getPrivacyPolicy = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     let data = await getGroupFlat("privacy_policy", PRIVACY_DEFAULTS, storeId);
@@ -464,7 +475,7 @@ export const getPrivacyPolicy = async (req, res) => {
   }
 };
 
-export const updatePrivacyPolicy = async (req, res) => {
+const updatePrivacyPolicy = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const data = { ...PRIVACY_DEFAULTS, ...req.body };
@@ -476,7 +487,7 @@ export const updatePrivacyPolicy = async (req, res) => {
   }
 };
 
-export const getTermsConditions = async (req, res) => {
+const getTermsConditions = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     let data = await getGroupFlat("terms_conditions", TERMS_DEFAULTS, storeId);
@@ -491,7 +502,7 @@ export const getTermsConditions = async (req, res) => {
   }
 };
 
-export const updateTermsConditions = async (req, res) => {
+const updateTermsConditions = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const data = { ...TERMS_DEFAULTS, ...req.body };
@@ -503,7 +514,7 @@ export const updateTermsConditions = async (req, res) => {
   }
 };
 
-export const getContactPage = async (req, res) => {
+const getContactPage = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     let data = await getGroupFlat("contact_page", CONTACT_DEFAULTS, storeId);
@@ -523,7 +534,7 @@ export const getContactPage = async (req, res) => {
   }
 };
 
-export const updateContactPage = async (req, res) => {
+const updateContactPage = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const data = { ...CONTACT_DEFAULTS, ...req.body };
@@ -534,3 +545,16 @@ export const updateContactPage = async (req, res) => {
     return errorResponse(res, "Failed to update contact page", 500);
   }
 };
+
+module.exports.getStoreInformation = getStoreInformation;
+module.exports.updateStoreInformation = updateStoreInformation;
+module.exports.getIntegrationSettings = getIntegrationSettings;
+module.exports.updateIntegrationSettings = updateIntegrationSettings;
+module.exports.getAboutUsSettings = getAboutUsSettings;
+module.exports.updateAboutUsSettings = updateAboutUsSettings;
+module.exports.getPrivacyPolicy = getPrivacyPolicy;
+module.exports.updatePrivacyPolicy = updatePrivacyPolicy;
+module.exports.getTermsConditions = getTermsConditions;
+module.exports.updateTermsConditions = updateTermsConditions;
+module.exports.getContactPage = getContactPage;
+module.exports.updateContactPage = updateContactPage;

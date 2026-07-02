@@ -1,9 +1,8 @@
-import { query } from "../config/db.js";
-import { successResponse, errorResponse } from "../helpers/responseHelper.js";
-import { getStoreId } from "../helpers/storeHelper.js";
-import logger from "../config/logger.js";
-
-export const getContentPage = async (req, res) => {
+const { query } = require("../config/db");
+const { successResponse, errorResponse } = require("../helpers/responseHelper");
+const { getStoreId } = require("../helpers/storeHelper");
+const logger = require("../config/logger");
+const getContentPage = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const { page_key } = req.params;
@@ -35,7 +34,7 @@ export const getContentPage = async (req, res) => {
   }
 };
 
-export const updateContentPage = async (req, res) => {
+const updateContentPage = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const { page_key } = req.params;
@@ -79,3 +78,6 @@ export const updateContentPage = async (req, res) => {
     return errorResponse(res, "Failed to update content page", 500);
   }
 };
+
+module.exports.getContentPage = getContentPage;
+module.exports.updateContentPage = updateContentPage;

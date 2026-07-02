@@ -1,7 +1,7 @@
-import express from "express";
-import { authenticate } from "../middleware/authMiddleware.js";
-import { authorize } from "../middleware/roleMiddleware.js";
-import {
+const express = require("express");
+const { authenticate } = require("../middleware/authMiddleware");
+const { authorize } = require("../middleware/roleMiddleware");
+const {
   getOrders,
   getOrder,
   getOrderStats,
@@ -16,8 +16,8 @@ import {
   syncShiprocketTracking,
   generateShippingLabel,
   scheduleShiprocketPickup,
-} from "../controllers/orderController.js";
-
+  assignShiprocketAwb,
+} = require("../controllers/orderController");
 const router = express.Router();
 
 router.get("/export", authenticate, authorize("super_admin", "admin", "manager"), exportOrders);
@@ -29,6 +29,14 @@ router.post(
   authorize("super_admin", "admin", "manager"),
   createShiprocketShipment
 );
+
+router.post(
+  "/:id/shiprocket/assign-awb",
+  authenticate,
+  authorize("super_admin", "admin", "manager"),
+  assignShiprocketAwb
+);
+
 router.post(
   "/:id/shiprocket/sync-tracking",
   authenticate,
@@ -56,4 +64,4 @@ router.post("/:id/notes", authenticate, authorize("super_admin", "admin", "manag
 router.get("/:id/invoice", authenticate, authorize("super_admin", "admin", "manager"), generateInvoice);
 router.delete("/:id", authenticate, authorize("super_admin", "admin"), deleteOrder);
 
-export default router;
+module.exports = router;

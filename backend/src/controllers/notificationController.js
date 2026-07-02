@@ -1,9 +1,8 @@
-import { query } from "../config/db.js";
-import { successResponse, errorResponse, paginatedResponse } from "../helpers/responseHelper.js";
-import { getStoreId } from "../helpers/storeHelper.js";
-import logger from "../config/logger.js";
-
-export const getNotifications = async (req, res) => {
+const { query } = require("../config/db");
+const { successResponse, errorResponse, paginatedResponse } = require("../helpers/responseHelper");
+const { getStoreId } = require("../helpers/storeHelper");
+const logger = require("../config/logger");
+const getNotifications = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const page = parseInt(req.query.page) || 1;
@@ -33,7 +32,7 @@ export const getNotifications = async (req, res) => {
   }
 };
 
-export const markAsRead = async (req, res) => {
+const markAsRead = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     await query(
@@ -47,7 +46,7 @@ export const markAsRead = async (req, res) => {
   }
 };
 
-export const markAllAsRead = async (req, res) => {
+const markAllAsRead = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     await query(
@@ -61,7 +60,7 @@ export const markAllAsRead = async (req, res) => {
   }
 };
 
-export const sendNotification = async (req, res) => {
+const sendNotification = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const { type, title, message, data, channel, recipient_type, recipient_id } = req.body;
@@ -83,7 +82,7 @@ export const sendNotification = async (req, res) => {
   }
 };
 
-export const deleteNotification = async (req, res) => {
+const deleteNotification = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     await query("DELETE FROM notifications WHERE id = ? AND store_id = ?", [req.params.id, storeId]);
@@ -94,7 +93,7 @@ export const deleteNotification = async (req, res) => {
   }
 };
 
-export const getUnreadCount = async (req, res) => {
+const getUnreadCount = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const [result] = await query(
@@ -108,7 +107,7 @@ export const getUnreadCount = async (req, res) => {
   }
 };
 
-export const getEmailTemplates = async (req, res) => {
+const getEmailTemplates = async (req, res) => {
   try {
     const templates = await query("SELECT * FROM email_templates ORDER BY name ASC");
     return successResponse(res, templates);
@@ -118,7 +117,7 @@ export const getEmailTemplates = async (req, res) => {
   }
 };
 
-export const updateEmailTemplate = async (req, res) => {
+const updateEmailTemplate = async (req, res) => {
   try {
     const { subject, body, variables } = req.body;
     await query(
@@ -131,3 +130,12 @@ export const updateEmailTemplate = async (req, res) => {
     return errorResponse(res, "Failed to update email template", 500);
   }
 };
+
+module.exports.getNotifications = getNotifications;
+module.exports.markAsRead = markAsRead;
+module.exports.markAllAsRead = markAllAsRead;
+module.exports.sendNotification = sendNotification;
+module.exports.deleteNotification = deleteNotification;
+module.exports.getUnreadCount = getUnreadCount;
+module.exports.getEmailTemplates = getEmailTemplates;
+module.exports.updateEmailTemplate = updateEmailTemplate;

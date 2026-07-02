@@ -2,12 +2,10 @@
  * LM Shopping Mall — API Health Audit Script
  * Run: node scripts/qa-audit.js
  */
-import dotenv from "dotenv";
-import mysql from "mysql2/promise";
-import path from "path";
-import { fileURLToPath } from "url";
-
-dotenv.config({ path: path.join(path.dirname(fileURLToPath(import.meta.url)), "../.env") });
+const dotenv = require("dotenv");
+const mysql = require("mysql2/promise");
+const path = require("path");
+dotenv.config({ path: path.join(__dirname, "../.env") });
 
 const BASE = `http://localhost:${process.env.PORT || 5000}/api`;
 const ADMIN = { email: "admin@lms.com", password: "admin123" };

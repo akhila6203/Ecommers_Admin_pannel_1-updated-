@@ -14,9 +14,11 @@ import {
   // updatePaymentStatus,
   // cancelOrder,
   createShiprocketShipment,
+  assignShiprocketAwb,
   syncShiprocketTracking,
   generateShiprocketLabel,
   scheduleShiprocketPickup,
+  
 } from "@/services/orderService";
 
 const ORDER_STATUSES = ["pending", "confirmed", "packed", "shipped", "out_for_delivery", "delivered", "cancelled"];
@@ -139,6 +141,20 @@ export default function Orders() {
   ),
     // onError: (err) => toast.error(err.message || "Failed to create Shiprocket shipment"),
   });
+
+  const assignAwbMutation = useMutation({
+  mutationFn: (id) => assignShiprocketAwb(id),
+  onSuccess: () => {
+    invalidate();
+    toast.success("AWB assigned successfully.");
+  },
+  onError: (err) =>
+    toast.error(
+      err.response?.data?.message ||
+      err.message ||
+      "Failed to assign AWB"
+    ),
+});
 
   const shiprocketSyncMutation = useMutation({
     mutationFn: (id) => syncShiprocketTracking(id),
@@ -280,16 +296,19 @@ const pickupMutation = useMutation({
           data={orders}
           searchPlaceholder="Search orders..."
           itemLabel="orders"
-          paginate={false}
+          paginate={true}
+          page={page}
+  setPage={setPage}
+  pagination={pagination}
         />
 
-        {pagination && pagination.totalPages > 1 && (
+        {/* {pagination && pagination.totalPages > 1 && (
           <div className="flex justify-center gap-2">
             <Button variant="outline" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Previous</Button>
             <span className="text-sm text-muted-foreground self-center">Page {pagination.page} of {pagination.totalPages}</span>
             <Button variant="outline" disabled={page >= pagination.totalPages} onClick={() => setPage((p) => p + 1)}>Next</Button>
           </div>
-        )}
+        )} */}
 
         {detailId && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -422,13 +441,13 @@ const pickupMutation = useMutation({
   size="sm"
   onClick={() => shiprocketCreateMutation.mutate(detailId)}
   disabled={
-    !!order.awb_code ||
+    !!order.shiprocket_shipment_id ||
     order.payment_status !== "paid" ||
-    ["shipped", "out_for_delivery", "delivered", "cancelled", "returned", "refunded"].includes(order.order_status) ||
+    ["packed","shipped","out_for_delivery","delivered","cancelled","returned","refunded"].includes(order.order_status) ||
     shiprocketCreateMutation.isPending
   }
 >
-  {order.awb_code ? "Shipment Created" : "Create Shipment"}
+  {order.shiprocket_shipment_id ? "Shipment Created" : "Create Shipment"}
 </Button>
     {/* <Button
       size="sm"
@@ -442,6 +461,23 @@ const pickupMutation = useMutation({
     >
       {order.awb_code ? "Shipment Created" : "Create Shipment"}
     </Button> */}
+    <Button
+  size="sm"
+  variant="secondary"
+  onClick={() => assignAwbMutation.mutate(detailId)}
+  disabled={
+    !order.shiprocket_shipment_id ||
+    !!order.awb_code ||
+    assignAwbMutation.isPending
+  }
+  className={
+    order.shiprocket_shipment_id && !order.awb_code
+      ? "bg-primary hover:bg-primary/90 text-white"
+      : ""
+  }
+>
+  {order.awb_code ? "AWB Assigned" : "Assign AWB"}
+</Button>
 
     <Button
       size="sm"

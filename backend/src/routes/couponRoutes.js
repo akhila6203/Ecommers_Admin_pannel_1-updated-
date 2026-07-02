@@ -1,7 +1,7 @@
-import express from "express";
-import { authenticate } from "../middleware/authMiddleware.js";
-import { authorize } from "../middleware/roleMiddleware.js";
-import {
+const express = require("express");
+const { authenticate } = require("../middleware/authMiddleware");
+const { authorize } = require("../middleware/roleMiddleware");
+const {
   getCoupons,
   getCoupon,
   createCoupon,
@@ -10,8 +10,7 @@ import {
   validateCoupon,
   getCouponUsage,
   getAllCouponUsage,
-} from "../controllers/couponController.js";
-
+} = require("../controllers/couponController");
 const router = express.Router();
 
 router.get("/usage/all", authenticate, authorize("super_admin", "admin", "manager"), getAllCouponUsage);
@@ -24,4 +23,4 @@ router.post("/", authenticate, authorize("super_admin", "admin"), createCoupon);
 router.put("/:id", authenticate, authorize("super_admin", "admin"), updateCoupon);
 router.delete("/:id", authenticate, authorize("super_admin", "admin"), deleteCoupon);
 
-export default router;
+module.exports = router;

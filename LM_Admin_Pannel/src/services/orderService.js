@@ -30,3 +30,6 @@ export const generateShiprocketLabel = (id) =>
 
 export const scheduleShiprocketPickup = (id) =>
   api.post(`/orders/${id}/shiprocket/schedule-pickup`);
+
+export const assignShiprocketAwb = (id, payload = {}) =>
+  api.post(`/orders/${id}/shiprocket/assign-awb`, payload);

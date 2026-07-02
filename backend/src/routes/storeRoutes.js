@@ -1,15 +1,14 @@
-import express from "express";
-import { authenticate } from "../middleware/authMiddleware.js";
-import { authorize } from "../middleware/roleMiddleware.js";
-import {
+const express = require("express");
+const { authenticate } = require("../middleware/authMiddleware");
+const { authorize } = require("../middleware/roleMiddleware");
+const {
   getStores,
   getStore,
   createStore,
   updateStore,
   deleteStore,
   getCurrentStore,
-} from "../controllers/storeController.js";
-
+} = require("../controllers/storeController");
 const router = express.Router();
 
 router.get("/", authenticate, authorize("super_admin", "admin"), getStores);
@@ -19,4 +18,4 @@ router.post("/", authenticate, authorize("super_admin"), createStore);
 router.put("/:id", authenticate, authorize("super_admin"), updateStore);
 router.delete("/:id", authenticate, authorize("super_admin"), deleteStore);
 
-export default router;
+module.exports = router;

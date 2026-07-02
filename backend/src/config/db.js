@@ -1,7 +1,6 @@
-import mysql from "mysql2/promise";
-import dotenv from "dotenv";
-import logger from "./logger.js";
-
+const mysql = require("mysql2/promise");
+const dotenv = require("dotenv");
+const logger = require("./logger");
 dotenv.config();
 
 const pool = mysql.createPool({
@@ -17,9 +16,7 @@ const pool = mysql.createPool({
   keepAliveInitialDelay: 0,
 });
 
-export default pool;
-
-export async function query(sql, params = []) {
+async function query(sql, params = []) {
   try {
     const [results] = await pool.execute(sql, params);
     return results;
@@ -29,7 +26,7 @@ export async function query(sql, params = []) {
   }
 }
 
-export async function getConnection() {
+async function getConnection() {
   try {
     const connection = await pool.getConnection();
     return connection;
@@ -39,7 +36,7 @@ export async function getConnection() {
   }
 }
 
-export async function testConnection() {
+async function testConnection() {
   try {
     const connection = await pool.getConnection();
     logger.info("MySQL database connected successfully");
@@ -50,3 +47,7 @@ export async function testConnection() {
     return false;
   }
 }
+
+module.exports.query = query;
+module.exports.getConnection = getConnection;
+module.exports.testConnection = testConnection;

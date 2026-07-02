@@ -1,6 +1,5 @@
-import { errorResponse } from "../helpers/responseHelper.js";
-
-export const validateLogin = (req, res, next) => {
+const { errorResponse } = require("../helpers/responseHelper");
+const validateLogin = (req, res, next) => {
   const { email, password } = req.body;
   const errors = [];
 
@@ -20,7 +19,7 @@ export const validateLogin = (req, res, next) => {
   next();
 };
 
-export const validateForgotPassword = (req, res, next) => {
+const validateForgotPassword = (req, res, next) => {
   const { email } = req.body;
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return errorResponse(res, "Valid email is required", 400, ["Valid email is required"]);
@@ -28,7 +27,7 @@ export const validateForgotPassword = (req, res, next) => {
   next();
 };
 
-export const validateResetPassword = (req, res, next) => {
+const validateResetPassword = (req, res, next) => {
   const { token, password } = req.body;
   const errors = [];
 
@@ -41,7 +40,7 @@ export const validateResetPassword = (req, res, next) => {
   next();
 };
 
-export const validateChangePassword = (req, res, next) => {
+const validateChangePassword = (req, res, next) => {
   const { currentPassword, newPassword } = req.body;
   const errors = [];
 
@@ -53,3 +52,8 @@ export const validateChangePassword = (req, res, next) => {
   if (errors.length) return errorResponse(res, "Validation failed", 400, errors);
   next();
 };
+
+module.exports.validateLogin = validateLogin;
+module.exports.validateForgotPassword = validateForgotPassword;
+module.exports.validateResetPassword = validateResetPassword;
+module.exports.validateChangePassword = validateChangePassword;

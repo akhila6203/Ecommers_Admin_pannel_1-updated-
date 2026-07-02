@@ -1,11 +1,10 @@
-import { query } from "../config/db.js";
-import { successResponse, errorResponse, paginatedResponse } from "../helpers/responseHelper.js";
-import { getStoreId } from "../helpers/storeHelper.js";
-import logger from "../config/logger.js";
-
+const { query } = require("../config/db");
+const { successResponse, errorResponse, paginatedResponse } = require("../helpers/responseHelper");
+const { getStoreId } = require("../helpers/storeHelper");
+const logger = require("../config/logger");
 // @desc    Get all media
 // @route   GET /api/media
-export const getMedia = async (req, res) => {
+const getMedia = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 50;
@@ -42,7 +41,7 @@ export const getMedia = async (req, res) => {
 
 // @desc    Upload media
 // @route   POST /api/media/upload
-export const uploadMedia = async (req, res) => {
+const uploadMedia = async (req, res) => {
   try {
     if (!req.file) return errorResponse(res, "No file uploaded", 400);
 
@@ -77,7 +76,7 @@ export const uploadMedia = async (req, res) => {
 
 // @desc    Upload multiple media
 // @route   POST /api/media/upload-multiple
-export const uploadMultipleMedia = async (req, res) => {
+const uploadMultipleMedia = async (req, res) => {
   try {
     if (!req.files || !req.files.length) return errorResponse(res, "No files uploaded", 400);
 
@@ -115,7 +114,7 @@ export const uploadMultipleMedia = async (req, res) => {
 
 // @desc    Update media info
 // @route   PUT /api/media/:id
-export const updateMedia = async (req, res) => {
+const updateMedia = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const { alt_text, folder } = req.body;
@@ -135,7 +134,7 @@ export const updateMedia = async (req, res) => {
 
 // @desc    Delete media
 // @route   DELETE /api/media/:id
-export const deleteMedia = async (req, res) => {
+const deleteMedia = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const existing = await query("SELECT * FROM media WHERE id = ? AND store_id = ?", [req.params.id, storeId]);
@@ -150,7 +149,7 @@ export const deleteMedia = async (req, res) => {
 
 // @desc    Get folders
 // @route   GET /api/media/folders
-export const getMediaFolders = async (req, res) => {
+const getMediaFolders = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const folders = await query(
@@ -163,3 +162,10 @@ export const getMediaFolders = async (req, res) => {
     return errorResponse(res, "Failed to fetch folders", 500);
   }
 };
+
+module.exports.getMedia = getMedia;
+module.exports.uploadMedia = uploadMedia;
+module.exports.uploadMultipleMedia = uploadMultipleMedia;
+module.exports.updateMedia = updateMedia;
+module.exports.deleteMedia = deleteMedia;
+module.exports.getMediaFolders = getMediaFolders;

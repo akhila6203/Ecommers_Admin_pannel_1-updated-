@@ -1,8 +1,7 @@
-import { query } from "../config/db.js";
-import { successResponse, errorResponse } from "../helpers/responseHelper.js";
-import { getStoreId } from "../helpers/storeHelper.js";
-import logger from "../config/logger.js";
-
+const { query } = require("../config/db");
+const { successResponse, errorResponse } = require("../helpers/responseHelper");
+const { getStoreId } = require("../helpers/storeHelper");
+const logger = require("../config/logger");
 const ADDRESS_FIELDS =
   "id, store_id, customer_id, address_type, full_name, phone, address_line1, address_line2, city, state, pincode, country, is_default, created_at, updated_at";
 
@@ -40,7 +39,7 @@ const clearDefaultAddresses = async (customerId, storeId, exceptId = null) => {
   await query(sql, params);
 };
 
-export const getAddresses = async (req, res) => {
+const getAddresses = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const customerId = req.customer.id;
@@ -59,7 +58,7 @@ export const getAddresses = async (req, res) => {
   }
 };
 
-export const createAddress = async (req, res) => {
+const createAddress = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const customerId = req.customer.id;
@@ -103,7 +102,7 @@ export const createAddress = async (req, res) => {
   }
 };
 
-export const updateAddress = async (req, res) => {
+const updateAddress = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const customerId = req.customer.id;
@@ -157,7 +156,7 @@ export const updateAddress = async (req, res) => {
   }
 };
 
-export const deleteAddress = async (req, res) => {
+const deleteAddress = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const customerId = req.customer.id;
@@ -181,7 +180,7 @@ export const deleteAddress = async (req, res) => {
   }
 };
 
-export const setDefaultAddress = async (req, res) => {
+const setDefaultAddress = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const customerId = req.customer.id;
@@ -210,3 +209,9 @@ export const setDefaultAddress = async (req, res) => {
     return errorResponse(res, "Failed to set default address", 500);
   }
 };
+
+module.exports.getAddresses = getAddresses;
+module.exports.createAddress = createAddress;
+module.exports.updateAddress = updateAddress;
+module.exports.deleteAddress = deleteAddress;
+module.exports.setDefaultAddress = setDefaultAddress;

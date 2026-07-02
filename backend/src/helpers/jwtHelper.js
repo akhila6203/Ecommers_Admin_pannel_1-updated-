@@ -1,6 +1,5 @@
-import jwt from "jsonwebtoken";
-import crypto from "crypto";
-
+const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
 const generateToken = (payload, expiresIn = "1h") => {
   return jwt.sign(payload, process.env.JWT_SECRET, {
     expiresIn,
@@ -27,7 +26,7 @@ const generateRandomToken = (bytes = 32) => {
   return crypto.randomBytes(bytes).toString("hex");
 };
 
-export {
+module.exports = {
   generateToken,
   generateRefreshToken,
   verifyToken,

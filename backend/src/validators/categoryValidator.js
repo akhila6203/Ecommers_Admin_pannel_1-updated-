@@ -1,6 +1,5 @@
-import { errorResponse } from "../helpers/responseHelper.js";
-
-export const validateCategory = (req, res, next) => {
+const { errorResponse } = require("../helpers/responseHelper");
+const validateCategory = (req, res, next) => {
   const { name } = req.body;
   const errors = [];
 
@@ -12,7 +11,7 @@ export const validateCategory = (req, res, next) => {
   next();
 };
 
-export const validateSubCategory = (req, res, next) => {
+const validateSubCategory = (req, res, next) => {
   const { name, main_category_id } = req.body;
   const errors = [];
 
@@ -27,7 +26,7 @@ export const validateSubCategory = (req, res, next) => {
   next();
 };
 
-export const validateSubCategoryUpdate = (req, res, next) => {
+const validateSubCategoryUpdate = (req, res, next) => {
   const { name } = req.body;
   const errors = [];
 
@@ -39,7 +38,7 @@ export const validateSubCategoryUpdate = (req, res, next) => {
   next();
 };
 
-export const validateChildCategory = (req, res, next) => {
+const validateChildCategory = (req, res, next) => {
   const { name, sub_category_id } = req.body;
   const errors = [];
 
@@ -54,7 +53,7 @@ export const validateChildCategory = (req, res, next) => {
   next();
 };
 
-export const validateChildCategoryUpdate = (req, res, next) => {
+const validateChildCategoryUpdate = (req, res, next) => {
   const { name } = req.body;
   const errors = [];
 
@@ -65,3 +64,9 @@ export const validateChildCategoryUpdate = (req, res, next) => {
   if (errors.length) return errorResponse(res, "Validation failed", 400, errors);
   next();
 };
+
+module.exports.validateCategory = validateCategory;
+module.exports.validateSubCategory = validateSubCategory;
+module.exports.validateSubCategoryUpdate = validateSubCategoryUpdate;
+module.exports.validateChildCategory = validateChildCategory;
+module.exports.validateChildCategoryUpdate = validateChildCategoryUpdate;

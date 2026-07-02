@@ -1,23 +1,20 @@
-import { query } from "../config/db.js";
-import { generateToken, generateRefreshToken } from "../helpers/jwtHelper.js";
-import { hashPassword, comparePassword } from "../helpers/passwordHelper.js";
-import { successResponse, errorResponse } from "../helpers/responseHelper.js";
-import { getStoreId } from "../helpers/storeHelper.js";
-import { getSessionId, mergeSessionCartToCustomer } from "../helpers/cartHelper.js";
-import {
+const { query } = require("../config/db");
+const { generateToken, generateRefreshToken } = require("../helpers/jwtHelper");
+const { hashPassword, comparePassword } = require("../helpers/passwordHelper");
+const { successResponse, errorResponse } = require("../helpers/responseHelper");
+const { getStoreId } = require("../helpers/storeHelper");
+const { getSessionId, mergeSessionCartToCustomer } = require("../helpers/cartHelper");
+const {
   isValidIndianPhone,
   normalizeIndianPhone,
   hashResetToken,
-} from "../helpers/otpHelper.js";
-import {
+} = require("../helpers/otpHelper");
+const {
   createAndSendOtp,
   verifyOtpCode,
   assertRegisterPhoneVerified,
-} from "../services/customerOtpService.js";
-import logger from "../config/logger.js";
-
-
-
+} = require("../services/customerOtpService");
+const logger = require("../config/logger");
 const customerFields =
   "id, store_id, first_name, last_name, email, phone, avatar, gender, date_of_birth, status, total_orders, total_spent, created_at, last_login_at";
 
@@ -59,7 +56,7 @@ const issueTokens = async (customer) => {
   return { token, refreshToken };
 };
 
-export const sendOtp = async (req, res) => {
+const sendOtp = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const { phone, email, purpose } = req.body;
@@ -124,7 +121,7 @@ export const sendOtp = async (req, res) => {
   }
 };
 
-export const verifyOtp = async (req, res) => {
+const verifyOtp = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const { phone, otp, purpose } = req.body;
@@ -163,7 +160,7 @@ export const verifyOtp = async (req, res) => {
   }
 };
 
-export const register = async (req, res) => {
+const register = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const { first_name, last_name, email, phone, password, verification_token } = req.body;
@@ -254,7 +251,7 @@ export const register = async (req, res) => {
   }
 };
 
-export const login = async (req, res) => {
+const login = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const { email, phone, password } = req.body;
@@ -349,7 +346,7 @@ if (sessionId) {
   }
 };
 
-export const logout = async (req, res) => {
+const logout = async (req, res) => {
   try {
     if (req.customer?.id) {
       await query(
@@ -364,7 +361,7 @@ export const logout = async (req, res) => {
   }
 };
 
-export const getProfile = async (req, res) => {
+const getProfile = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const customers = await query(
@@ -423,7 +420,7 @@ export const getProfile = async (req, res) => {
   }
 };
 
-export const updateProfile = async (req, res) => {
+const updateProfile = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const { first_name, last_name, phone, gender, date_of_birth } = req.body;
@@ -513,7 +510,7 @@ const clearDefaultAddresses = async (customerId, storeId, exceptId = null) => {
   await query(sql, params);
 };
 
-export const getAddresses = async (req, res) => {
+const getAddresses = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const customerId = req.customer.id;
@@ -536,7 +533,7 @@ export const getAddresses = async (req, res) => {
   }
 };
 
-export const createAddress = async (req, res) => {
+const createAddress = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const customerId = req.customer.id;
@@ -584,7 +581,7 @@ export const createAddress = async (req, res) => {
   }
 };
 
-export const updateAddress = async (req, res) => {
+const updateAddress = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const customerId = req.customer.id;
@@ -642,7 +639,7 @@ export const updateAddress = async (req, res) => {
   }
 };
 
-export const deleteAddress = async (req, res) => {
+const deleteAddress = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const customerId = req.customer.id;
@@ -670,7 +667,7 @@ export const deleteAddress = async (req, res) => {
   }
 };
 
-export const forgotPassword = async (req, res) => {
+const forgotPassword = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const { phone } = req.body;
@@ -709,7 +706,7 @@ export const forgotPassword = async (req, res) => {
   }
 };
 
-export const resetPassword = async (req, res) => {
+const resetPassword = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const { phone, otp, password } = req.body;
@@ -755,7 +752,7 @@ export const resetPassword = async (req, res) => {
   }
 };
 
-export const setDefaultAddress = async (req, res) => {
+const setDefaultAddress = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const customerId = req.customer.id;
@@ -788,3 +785,18 @@ export const setDefaultAddress = async (req, res) => {
     );
   }
 };
+
+module.exports.sendOtp = sendOtp;
+module.exports.verifyOtp = verifyOtp;
+module.exports.register = register;
+module.exports.login = login;
+module.exports.logout = logout;
+module.exports.getProfile = getProfile;
+module.exports.updateProfile = updateProfile;
+module.exports.getAddresses = getAddresses;
+module.exports.createAddress = createAddress;
+module.exports.updateAddress = updateAddress;
+module.exports.deleteAddress = deleteAddress;
+module.exports.forgotPassword = forgotPassword;
+module.exports.resetPassword = resetPassword;
+module.exports.setDefaultAddress = setDefaultAddress;

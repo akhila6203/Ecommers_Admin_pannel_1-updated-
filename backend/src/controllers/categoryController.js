@@ -1,9 +1,8 @@
-import { query } from "../config/db.js";
-import { generateUniqueSlug } from "../helpers/slugHelper.js";
-import { successResponse, errorResponse, paginatedResponse } from "../helpers/responseHelper.js";
-import { getStoreId } from "../helpers/storeHelper.js";
-import logger from "../config/logger.js";
-
+const { query } = require("../config/db");
+const { generateUniqueSlug } = require("../helpers/slugHelper");
+const { successResponse, errorResponse, paginatedResponse } = require("../helpers/responseHelper");
+const { getStoreId } = require("../helpers/storeHelper");
+const logger = require("../config/logger");
 const MAIN_COLUMNS = "id, name, slug, image, image_url, created_at, updated_at";
 const SUB_COLUMNS = "id, main_category_id, name, slug, image, image_url, created_at, updated_at";
 const CHILD_COLUMNS = "id, sub_category_id, name, slug, image, image_url, created_at, updated_at";
@@ -49,7 +48,7 @@ const checkChildCategorySlug = async (slug, storeId, excludeId = null) => {
   return result.length > 0 ? result[0] : null;
 };
 
-export const getCategories = async (req, res) => {
+const getCategories = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const page = parseInt(req.query.page) || 1;
@@ -85,7 +84,7 @@ export const getCategories = async (req, res) => {
   }
 };
 
-export const getAllCategories = async (req, res) => {
+const getAllCategories = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const categories = await query(
@@ -99,7 +98,7 @@ export const getAllCategories = async (req, res) => {
   }
 };
 
-export const getCategory = async (req, res) => {
+const getCategory = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const categories = await query(`SELECT ${MAIN_COLUMNS} FROM categories WHERE id = ? AND store_id = ?`, [req.params.id, storeId]);
@@ -122,7 +121,7 @@ export const getCategory = async (req, res) => {
   }
 };
 
-export const createCategory = async (req, res) => {
+const createCategory = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const { name } = req.body;
@@ -142,7 +141,7 @@ export const createCategory = async (req, res) => {
   }
 };
 
-export const updateCategory = async (req, res) => {
+const updateCategory = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const { name } = req.body;
@@ -175,7 +174,7 @@ export const updateCategory = async (req, res) => {
   }
 };
 
-export const deleteCategory = async (req, res) => {
+const deleteCategory = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const existing = await query("SELECT id FROM categories WHERE id = ? AND store_id = ?", [req.params.id, storeId]);
@@ -191,11 +190,11 @@ export const deleteCategory = async (req, res) => {
   }
 };
 
-export const toggleCategoryStatus = async (req, res) => {
+const toggleCategoryStatus = async (req, res) => {
   return errorResponse(res, "Category status is not used in admin UI", 400);
 };
 
-export const getSubCategories = async (req, res) => {
+const getSubCategories = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const { mainId } = req.params;
@@ -232,7 +231,7 @@ export const getSubCategories = async (req, res) => {
   }
 };
 
-export const createSubCategory = async (req, res) => {
+const createSubCategory = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const { name, main_category_id } = req.body;
@@ -253,7 +252,7 @@ export const createSubCategory = async (req, res) => {
   }
 };
 
-export const updateSubCategory = async (req, res) => {
+const updateSubCategory = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const { name, main_category_id } = req.body;
@@ -286,7 +285,7 @@ export const updateSubCategory = async (req, res) => {
   }
 };
 
-export const deleteSubCategory = async (req, res) => {
+const deleteSubCategory = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const existing = await query("SELECT id FROM sub_categories WHERE id = ? AND store_id = ?", [req.params.id, storeId]);
@@ -302,7 +301,7 @@ export const deleteSubCategory = async (req, res) => {
   }
 };
 
-export const getChildCategories = async (req, res) => {
+const getChildCategories = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const { subId } = req.params;
@@ -339,7 +338,7 @@ export const getChildCategories = async (req, res) => {
   }
 };
 
-export const createChildCategory = async (req, res) => {
+const createChildCategory = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const { name, sub_category_id } = req.body;
@@ -360,7 +359,7 @@ export const createChildCategory = async (req, res) => {
   }
 };
 
-export const updateChildCategory = async (req, res) => {
+const updateChildCategory = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const { name, sub_category_id } = req.body;
@@ -393,7 +392,7 @@ export const updateChildCategory = async (req, res) => {
   }
 };
 
-export const deleteChildCategory = async (req, res) => {
+const deleteChildCategory = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const existing = await query("SELECT id FROM child_categories WHERE id = ? AND store_id = ?", [req.params.id, storeId]);
@@ -409,7 +408,7 @@ export const deleteChildCategory = async (req, res) => {
   }
 };
 
-export const getCategoryHierarchy = async (req, res) => {
+const getCategoryHierarchy = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const categories = await query(
@@ -439,3 +438,20 @@ export const getCategoryHierarchy = async (req, res) => {
     return errorResponse(res, process.env.NODE_ENV === "development" ? error.message : "Failed to fetch hierarchy", 500);
   }
 };
+
+module.exports.getCategories = getCategories;
+module.exports.getAllCategories = getAllCategories;
+module.exports.getCategory = getCategory;
+module.exports.createCategory = createCategory;
+module.exports.updateCategory = updateCategory;
+module.exports.deleteCategory = deleteCategory;
+module.exports.toggleCategoryStatus = toggleCategoryStatus;
+module.exports.getSubCategories = getSubCategories;
+module.exports.createSubCategory = createSubCategory;
+module.exports.updateSubCategory = updateSubCategory;
+module.exports.deleteSubCategory = deleteSubCategory;
+module.exports.getChildCategories = getChildCategories;
+module.exports.createChildCategory = createChildCategory;
+module.exports.updateChildCategory = updateChildCategory;
+module.exports.deleteChildCategory = deleteChildCategory;
+module.exports.getCategoryHierarchy = getCategoryHierarchy;

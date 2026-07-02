@@ -1,11 +1,10 @@
-import { query } from "../config/db.js";
-import { successResponse, errorResponse, paginatedResponse } from "../helpers/responseHelper.js";
-import { hashPassword } from "../helpers/passwordHelper.js";
-import logger from "../config/logger.js";
-
+const { query } = require("../config/db");
+const { successResponse, errorResponse, paginatedResponse } = require("../helpers/responseHelper");
+const { hashPassword } = require("../helpers/passwordHelper");
+const logger = require("../config/logger");
 // @desc    Get all admins
 // @route   GET /api/admin
-export const getAdmins = async (req, res) => {
+const getAdmins = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
@@ -50,7 +49,7 @@ export const getAdmins = async (req, res) => {
 
 // @desc    Get single admin
 // @route   GET /api/admin/:id
-export const getAdmin = async (req, res) => {
+const getAdmin = async (req, res) => {
   try {
     const admins = await query(
       "SELECT id, store_id, name, email, phone, role, status, avatar, last_login_at, created_at FROM admins WHERE id = ? AND deleted_at IS NULL",
@@ -66,7 +65,7 @@ export const getAdmin = async (req, res) => {
 
 // @desc    Create admin
 // @route   POST /api/admin
-export const createAdmin = async (req, res) => {
+const createAdmin = async (req, res) => {
   try {
     const { name, email, password, phone, role, role_id, status, store_id } = req.body;
 
@@ -111,7 +110,7 @@ export const createAdmin = async (req, res) => {
 
 // @desc    Update admin
 // @route   PUT /api/admin/:id
-export const updateAdmin = async (req, res) => {
+const updateAdmin = async (req, res) => {
   try {
     const existing = await query("SELECT * FROM admins WHERE id = ? AND deleted_at IS NULL", [req.params.id]);
     if (!existing.length) return errorResponse(res, "Admin not found", 404);
@@ -159,7 +158,7 @@ export const updateAdmin = async (req, res) => {
 
 // @desc    Delete admin (soft)
 // @route   DELETE /api/admin/:id
-export const deleteAdmin = async (req, res) => {
+const deleteAdmin = async (req, res) => {
   try {
     if (parseInt(req.params.id) === req.admin?.id) {
       return errorResponse(res, "You cannot delete yourself", 400);
@@ -174,7 +173,7 @@ export const deleteAdmin = async (req, res) => {
 
 // @desc    Get all roles
 // @route   GET /api/admin/roles
-export const getRoles = async (req, res) => {
+const getRoles = async (req, res) => {
   try {
     const roles = await query("SELECT * FROM roles WHERE deleted_at IS NULL ORDER BY id ASC");
     return successResponse(res, roles);
@@ -186,7 +185,7 @@ export const getRoles = async (req, res) => {
 
 // @desc    Create role
 // @route   POST /api/admin/roles
-export const createRole = async (req, res) => {
+const createRole = async (req, res) => {
   try {
     const { name, slug, description, permissions } = req.body;
     if (!name || !slug) return errorResponse(res, "Name and slug are required", 400);
@@ -205,7 +204,7 @@ export const createRole = async (req, res) => {
 
 // @desc    Update role
 // @route   PUT /api/admin/roles/:id
-export const updateRole = async (req, res) => {
+const updateRole = async (req, res) => {
   try {
     const { name, description, permissions, status } = req.body;
     await query(
@@ -221,7 +220,7 @@ export const updateRole = async (req, res) => {
 
 // @desc    Delete role
 // @route   DELETE /api/admin/roles/:id
-export const deleteRole = async (req, res) => {
+const deleteRole = async (req, res) => {
   try {
     const adminsWithRole = await query("SELECT COUNT(*) as count FROM admins WHERE role_id = ? AND deleted_at IS NULL", [req.params.id]);
     if (adminsWithRole[0].count > 0) {
@@ -237,7 +236,7 @@ export const deleteRole = async (req, res) => {
 
 // @desc    Get permissions list
 // @route   GET /api/admin/permissions
-export const getPermissions = async (req, res) => {
+const getPermissions = async (req, res) => {
   try {
     const permissions = await query("SELECT * FROM permissions ORDER BY module, name ASC");
     return successResponse(res, permissions);
@@ -254,14 +253,13 @@ export const getPermissions = async (req, res) => {
 
 
 
-// import { query } from "../config/db.js";
-// import { successResponse, errorResponse, paginatedResponse } from "../helpers/responseHelper.js";
-// import { hashPassword } from "../helpers/passwordHelper.js";
-// import logger from "../config/logger.js";
-
+// const { query } = require("../config/db");
+// const { successResponse, errorResponse, paginatedResponse } = require("../helpers/responseHelper");
+// const { hashPassword } = require("../helpers/passwordHelper");
+// const logger = require("../config/logger");
 // // @desc    Get all admins
 // // @route   GET /api/admin
-// export const getAdmins = async (req, res) => {
+// const getAdmins = async (req, res) => {
 //   try {
 //     const page = parseInt(req.query.page) || 1;
 //     const limit = parseInt(req.query.limit) || 20;
@@ -306,7 +304,7 @@ export const getPermissions = async (req, res) => {
 
 // // @desc    Get single admin
 // // @route   GET /api/admin/:id
-// export const getAdmin = async (req, res) => {
+// const getAdmin = async (req, res) => {
 //   try {
 //     const admins = await query(
 //       "SELECT id, name, email, phone, role, status, avatar, last_login_at, created_at FROM admins WHERE id = ? AND deleted_at IS NULL",
@@ -322,7 +320,7 @@ export const getPermissions = async (req, res) => {
 
 // // @desc    Create admin
 // // @route   POST /api/admin
-// export const createAdmin = async (req, res) => {
+// const createAdmin = async (req, res) => {
 //   try {
 //     const { name, email, password, phone, role, role_id, status } = req.body;
 
@@ -354,7 +352,7 @@ export const getPermissions = async (req, res) => {
 
 // // @desc    Update admin
 // // @route   PUT /api/admin/:id
-// export const updateAdmin = async (req, res) => {
+// const updateAdmin = async (req, res) => {
 //   try {
 //     const existing = await query("SELECT * FROM admins WHERE id = ? AND deleted_at IS NULL", [req.params.id]);
 //     if (!existing.length) return errorResponse(res, "Admin not found", 404);
@@ -392,7 +390,7 @@ export const getPermissions = async (req, res) => {
 
 // // @desc    Delete admin (soft)
 // // @route   DELETE /api/admin/:id
-// export const deleteAdmin = async (req, res) => {
+// const deleteAdmin = async (req, res) => {
 //   try {
 //     if (parseInt(req.params.id) === req.admin?.id) {
 //       return errorResponse(res, "You cannot delete yourself", 400);
@@ -407,7 +405,7 @@ export const getPermissions = async (req, res) => {
 
 // // @desc    Get all roles
 // // @route   GET /api/admin/roles
-// export const getRoles = async (req, res) => {
+// const getRoles = async (req, res) => {
 //   try {
 //     const roles = await query("SELECT * FROM roles WHERE deleted_at IS NULL ORDER BY id ASC");
 //     return successResponse(res, roles);
@@ -419,7 +417,7 @@ export const getPermissions = async (req, res) => {
 
 // // @desc    Create role
 // // @route   POST /api/admin/roles
-// export const createRole = async (req, res) => {
+// const createRole = async (req, res) => {
 //   try {
 //     const { name, slug, description, permissions } = req.body;
 //     if (!name || !slug) return errorResponse(res, "Name and slug are required", 400);
@@ -438,7 +436,7 @@ export const getPermissions = async (req, res) => {
 
 // // @desc    Update role
 // // @route   PUT /api/admin/roles/:id
-// export const updateRole = async (req, res) => {
+// const updateRole = async (req, res) => {
 //   try {
 //     const { name, description, permissions, status } = req.body;
 //     await query(
@@ -454,7 +452,7 @@ export const getPermissions = async (req, res) => {
 
 // // @desc    Delete role
 // // @route   DELETE /api/admin/roles/:id
-// export const deleteRole = async (req, res) => {
+// const deleteRole = async (req, res) => {
 //   try {
 //     const adminsWithRole = await query("SELECT COUNT(*) as count FROM admins WHERE role_id = ? AND deleted_at IS NULL", [req.params.id]);
 //     if (adminsWithRole[0].count > 0) {
@@ -470,7 +468,7 @@ export const getPermissions = async (req, res) => {
 
 // // @desc    Get permissions list
 // // @route   GET /api/admin/permissions
-// export const getPermissions = async (req, res) => {
+// const getPermissions = async (req, res) => {
 //   try {
 //     const permissions = await query("SELECT * FROM permissions ORDER BY module, name ASC");
 //     return successResponse(res, permissions);
@@ -479,3 +477,24 @@ export const getPermissions = async (req, res) => {
 //     return errorResponse(res, "Failed to fetch permissions", 500);
 //   }
 // };
+
+module.exports.getAdmins = getAdmins;
+module.exports.getAdmin = getAdmin;
+module.exports.createAdmin = createAdmin;
+module.exports.updateAdmin = updateAdmin;
+module.exports.deleteAdmin = deleteAdmin;
+module.exports.getRoles = getRoles;
+module.exports.createRole = createRole;
+module.exports.updateRole = updateRole;
+module.exports.deleteRole = deleteRole;
+module.exports.getPermissions = getPermissions;
+module.exports.getAdmins = getAdmins;
+module.exports.getAdmin = getAdmin;
+module.exports.createAdmin = createAdmin;
+module.exports.updateAdmin = updateAdmin;
+module.exports.deleteAdmin = deleteAdmin;
+module.exports.getRoles = getRoles;
+module.exports.createRole = createRole;
+module.exports.updateRole = updateRole;
+module.exports.deleteRole = deleteRole;
+module.exports.getPermissions = getPermissions;

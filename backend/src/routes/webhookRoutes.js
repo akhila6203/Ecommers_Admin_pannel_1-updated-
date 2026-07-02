@@ -1,8 +1,7 @@
-import { Router } from "express";
-import { handleShiprocketWebhook } from "../controllers/webhookController.js";
-
+const { Router } = require("express");
+const { handleShiprocketWebhook } = require("../controllers/webhookController");
 const router = Router();
 
 router.post("/shiprocket", handleShiprocketWebhook);
 
-export default router;
+module.exports = router;

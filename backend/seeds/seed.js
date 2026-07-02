@@ -1,8 +1,7 @@
-import { query, testConnection } from "../src/config/db.js";
-import { hashPassword } from "../src/helpers/passwordHelper.js";
-import { generateSlug } from "../src/helpers/slugHelper.js";
-import logger from "../src/config/logger.js";
-
+const { query, testConnection } = require("../src/config/db");
+const { hashPassword } = require("../src/helpers/passwordHelper");
+const { generateSlug } = require("../src/helpers/slugHelper");
+const logger = require("../src/config/logger");
 async function seed() {
   console.log("🌱 Seeding LM Shopping Mall database...\n");
 

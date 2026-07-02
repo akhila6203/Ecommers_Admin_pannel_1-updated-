@@ -1,11 +1,10 @@
-import express from "express";
-import { authenticate } from "../middleware/authMiddleware.js";
-import { authorize } from "../middleware/roleMiddleware.js";
-import { upload, uploadErrorHandler } from "../middleware/uploadMiddleware.js";
-import {
+const express = require("express");
+const { authenticate } = require("../middleware/authMiddleware");
+const { authorize } = require("../middleware/roleMiddleware");
+const { upload, uploadErrorHandler } = require("../middleware/uploadMiddleware");
+const {
   getMedia, uploadMedia, uploadMultipleMedia, updateMedia, deleteMedia, getMediaFolders,
-} from "../controllers/mediaController.js";
-
+} = require("../controllers/mediaController");
 const router = express.Router();
 
 router.get("/folders", authenticate, authorize("super_admin", "admin", "manager"), getMediaFolders);
@@ -15,4 +14,4 @@ router.post("/upload-multiple", authenticate, authorize("super_admin", "admin", 
 router.put("/:id", authenticate, authorize("super_admin", "admin", "manager"), updateMedia);
 router.delete("/:id", authenticate, authorize("super_admin", "admin"), deleteMedia);
 
-export default router;
+module.exports = router;

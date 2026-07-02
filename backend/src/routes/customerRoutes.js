@@ -1,7 +1,7 @@
-import express from "express";
-import { authenticate } from "../middleware/authMiddleware.js";
-import { authorize } from "../middleware/roleMiddleware.js";
-import {
+const express = require("express");
+const { authenticate } = require("../middleware/authMiddleware");
+const { authorize } = require("../middleware/roleMiddleware");
+const {
   getCustomers,
   getCustomer,
   createCustomer,
@@ -9,8 +9,7 @@ import {
   blockCustomer,
   deleteCustomer,
   getCustomerAnalytics,
-} from "../controllers/customerController.js";
-
+} = require("../controllers/customerController");
 const router = express.Router();
 
 router.get("/analytics", authenticate, authorize("super_admin", "admin"), getCustomerAnalytics);
@@ -21,4 +20,4 @@ router.put("/:id", authenticate, authorize("super_admin", "admin", "manager"), u
 router.put("/:id/block", authenticate, authorize("super_admin", "admin"), blockCustomer);
 router.delete("/:id", authenticate, authorize("super_admin", "admin"), deleteCustomer);
 
-export default router;
+module.exports = router;

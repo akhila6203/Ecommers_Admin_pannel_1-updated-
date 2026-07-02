@@ -1,7 +1,6 @@
-import rateLimit from "express-rate-limit";
-import logger from "../config/logger.js";
-
-export const apiLimiter = rateLimit({
+const rateLimit = require("express-rate-limit");
+const logger = require("../config/logger");
+const apiLimiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS, 10) || 15 * 60 * 1000,
   max: parseInt(process.env.RATE_LIMIT_MAX, 10) || 5000,
   skip: () => process.env.NODE_ENV === "development",
@@ -16,7 +15,7 @@ export const apiLimiter = rateLimit({
     res.status(options.statusCode).json(options.message);
   },
 });
-// export const apiLimiter = rateLimit({
+// const apiLimiter = rateLimit({
 //   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
 //   max: parseInt(process.env.RATE_LIMIT_MAX) || 10000,
 //   message: {
@@ -31,7 +30,7 @@ export const apiLimiter = rateLimit({
 //   },
 // });
 
-export const authLimiter = rateLimit({
+const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
   message: {
@@ -42,7 +41,7 @@ export const authLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-export const uploadLimiter = rateLimit({
+const uploadLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 50,
   message: {
@@ -52,3 +51,7 @@ export const uploadLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+module.exports.apiLimiter = apiLimiter;
+module.exports.authLimiter = authLimiter;
+module.exports.uploadLimiter = uploadLimiter;

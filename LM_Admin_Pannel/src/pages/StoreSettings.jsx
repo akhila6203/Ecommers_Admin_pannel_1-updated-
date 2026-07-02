@@ -77,14 +77,21 @@ const EMPTY_INTEGRATIONS = {
   razorpay_key_secret: "",
   razorpay_enabled: false,
 
+
   // WhatsApp
-  whatsapp_enabled: false,
-  whatsapp_provider: "360dialog",
-  whatsapp_api_key: "",
+    whatsapp_enabled: false,
+    whatsapp_provider: "360messenger",
+    whatsapp_api_url: "https://api.360messenger.com/v2/sendMessage",
+    whatsapp_api_key: "",
+    // whatsapp_sender: "",
+    // whatsapp_template_name: "",
+  // whatsapp_enabled: false,
+  // whatsapp_provider: "360dialog",
+  // whatsapp_api_key: "",
   whatsapp_phone_number: "",
-  whatsapp_template_name: "",
-  whatsapp_phone_number_id: "",
-  whatsapp_business_account_id: "",
+  // whatsapp_template_name: "",
+  // whatsapp_phone_number_id: "",
+  // whatsapp_business_account_id: "",
 
   // Shiprocket
   shiprocket_email: "",
@@ -206,11 +213,19 @@ export default function StoreSettings() {
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [dirtyTabs]);
 
-  const storeQuery = useQuery({
-    queryKey: ["settings", "store-information"],
-    queryFn: getStoreInformation,
-    enabled: visitedTabs.has("store-information"),
-  });
+  const adminUser = JSON.parse(localStorage.getItem("lm_admin_user") || "{}");
+    const currentStoreId = adminUser?.store_id || "super_admin";
+
+    const storeQuery = useQuery({
+      queryKey: ["settings", "store-information", currentStoreId],
+      queryFn: getStoreInformation,
+      enabled: visitedTabs.has("store-information"),
+    });
+  // const storeQuery = useQuery({
+  //   queryKey: ["settings", "store-information"],
+  //   queryFn: getStoreInformation,
+  //   enabled: visitedTabs.has("store-information"),
+  // });
 
   const integrationsQuery = useQuery({
     queryKey: ["settings", "integrations"],
@@ -219,12 +234,20 @@ export default function StoreSettings() {
   });
 
   const storeInitialized = useRef(false);
+
   useEffect(() => {
-    if (storeQuery.data && !storeInitialized.current) {
-      setStoreInfo({ ...EMPTY_STORE, ...storeQuery.data?.data });
-      storeInitialized.current = true;
-    }
-  }, [storeQuery.data]);
+      if (storeQuery.data && !dirtyTabs["store-information"]) {
+        const data = storeQuery.data?.data || storeQuery.data;
+        setStoreInfo({ ...EMPTY_STORE, ...data });
+        storeInitialized.current = true;
+      }
+    },[storeQuery.data, dirtyTabs["store-information"]]);
+  // useEffect(() => {
+  //   if (storeQuery.data && !storeInitialized.current) {
+  //     setStoreInfo({ ...EMPTY_STORE, ...storeQuery.data?.data });
+  //     storeInitialized.current = true;
+  //   }
+  // }, [storeQuery.data]);
 
   const integrationsInitialized = useRef(false);
   useEffect(() => {
@@ -237,10 +260,16 @@ export default function StoreSettings() {
   const storeMutation = useMutation({
     mutationFn: updateStoreInformation,
     onSuccess: (res) => {
-      setStoreInfo({ ...EMPTY_STORE, ...res.data });
+      const data = res?.data || res;
+      setStoreInfo({ ...EMPTY_STORE, ...data });
+    // onSuccess: (res) => {
+    //   setStoreInfo({ ...EMPTY_STORE, ...res.data });
       storeInitialized.current = true;
       markClean("store-information");
-      queryClient.invalidateQueries({ queryKey: ["settings", "store-information"] });
+      queryClient.invalidateQueries({
+  queryKey: ["settings", "store-information", currentStoreId],
+});
+      // queryClient.invalidateQueries({ queryKey: ["settings", "store-information"] });
       queryClient.invalidateQueries({ queryKey: ["settings"] });
       refreshBranding();
       toast.success("Store information saved successfully!");
@@ -477,13 +506,13 @@ export default function StoreSettings() {
                         placeholder="+91 9876543210"
                       />
                     </Field>
-                    <Field label="WhatsApp Message">
+                    {/* <Field label="WhatsApp Message">
                       <Input
                         value={storeInfo.whatsappMessage}
                         onChange={(e) => updateStoreField("whatsappMessage", e.target.value)}
                         placeholder="Hi, I have a question about..."
                       />
-                    </Field>
+                    </Field> */}
                     <Field label="Store Address" className="md:col-span-2">
                       <Textarea
                         value={storeInfo.storeAddress}
@@ -525,13 +554,13 @@ export default function StoreSettings() {
                       onUpload={handleLogoUpload}
                       variant="logo"
                     />
-                    <ImageUploadField
+                    {/* <ImageUploadField
                       label="Store Banner"
                       value={storeInfo.storeBanner}
                       uploading={bannerUploading}
                       onUpload={handleBannerUpload}
                       variant="banner"
-                    />
+                    /> */}
                   </div>
                   <Button
                     onClick={() => storeMutation.mutate(storeInfo)}
@@ -619,6 +648,18 @@ export default function StoreSettings() {
                           <div>
                             <Label className="text-xs font-medium">Provider</Label>
                             <Select
+  value={integrations.whatsapp_provider || "360messenger"}
+  onValueChange={(val) => updateIntegrationField("whatsapp_provider", val)}
+  disabled={!(integrations.whatsapp_enabled === true || integrations.whatsapp_enabled === "true")}
+>
+  <SelectTrigger>
+    <SelectValue placeholder="Select provider" />
+  </SelectTrigger>
+  <SelectContent>
+    <SelectItem value="360messenger">360Messenger</SelectItem>
+  </SelectContent>
+</Select>
+                            {/* <Select
                               value={integrations.whatsapp_provider || "360dialog"}
                               onValueChange={(val) => updateIntegrationField("whatsapp_provider", val)}
                               disabled={!(integrations.whatsapp_enabled === true || integrations.whatsapp_enabled === "true")}
@@ -630,11 +671,60 @@ export default function StoreSettings() {
                                 <SelectItem value="360dialog">360dialog</SelectItem>
                                 <SelectItem value="meta">Meta Cloud API</SelectItem>
                                 
-                                {/* <SelectItem value="360dialog">360dialog</SelectItem> */}
+                               
                               </SelectContent>
-                            </Select>
+                            </Select> */}
                           </div>
                           <div>
+  <Label className="text-xs font-medium">API URL</Label>
+  <Input
+    value={integrations.whatsapp_api_url || ""}
+    onChange={(e) => updateIntegrationField("whatsapp_api_url", e.target.value)}
+    placeholder="https://api.360messenger.com/v2/sendMessage"
+    disabled={!(integrations.whatsapp_enabled === true || integrations.whatsapp_enabled === "true")}
+  />
+</div>
+
+<div>
+  <Label className="text-xs font-medium">API Key</Label>
+  <Input
+    type="password"
+    value={integrations.whatsapp_api_key || ""}
+    onChange={(e) => updateIntegrationField("whatsapp_api_key", e.target.value)}
+    placeholder="360Messenger API Key"
+    disabled={!(integrations.whatsapp_enabled === true || integrations.whatsapp_enabled === "true")}
+  />
+</div>
+
+<div>
+                            <Label className="text-xs font-medium">Sender / WhatsApp Number</Label>
+                            <Input
+                              value={integrations.whatsapp_phone_number || ""}
+                              onChange={(e) => updateIntegrationField("whatsapp_phone_number", e.target.value)}
+                              placeholder="+91 9003388382"
+                              disabled={!(integrations.whatsapp_enabled === true || integrations.whatsapp_enabled === "true")}
+                            />
+                          </div> 
+{/* <div>
+  <Label className="text-xs font-medium">Sender / WhatsApp Number</Label>
+  <Input
+    value={integrations.whatsapp_sender || ""}
+    onChange={(e) => updateIntegrationField("whatsapp_sender", e.target.value)}
+    placeholder="919876543210"
+    disabled={!(integrations.whatsapp_enabled === true || integrations.whatsapp_enabled === "true")}
+  />
+</div> */}
+
+{/* <div>
+  <Label className="text-xs font-medium">OTP Template Name</Label>
+  <Input
+    value={integrations.whatsapp_template_name || ""}
+    onChange={(e) => updateIntegrationField("whatsapp_template_name", e.target.value)}
+    placeholder="otp_verification"
+    disabled={!(integrations.whatsapp_enabled === true || integrations.whatsapp_enabled === "true")}
+  />
+</div> */}
+                          {/* <div>
                             <Label className="text-xs font-medium">OTP Template Name</Label>
                             <Input
                               value={integrations.whatsapp_template_name || ""}
@@ -661,8 +751,8 @@ export default function StoreSettings() {
                               placeholder="+91 9876543210"
                               disabled={!(integrations.whatsapp_enabled === true || integrations.whatsapp_enabled === "true")}
                             />
-                          </div>
-                          {integrations.whatsapp_provider === "meta" && (
+                          </div> */}
+                          {/* {integrations.whatsapp_provider === "meta" && (
   <>
     <div>
       <Label className="text-xs font-medium">Phone Number ID</Label>
@@ -684,10 +774,10 @@ export default function StoreSettings() {
       />
     </div>
   </>
-)}
+)} */}
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          Used for registration and forgot-password OTP via 360dialog WhatsApp authentication templates.
+                          Used for registration and forgot-password OTP via 360Messenger WhatsApp authentication templates.
                         </p>
                       </CardContent>
                     </Card>

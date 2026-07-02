@@ -1,8 +1,7 @@
-import { query } from "../config/db.js";
-import { successResponse, errorResponse } from "../helpers/responseHelper.js";
-import { getStoreId } from "../helpers/storeHelper.js";
-import logger from "../config/logger.js";
-
+const { query } = require("../config/db");
+const { successResponse, errorResponse } = require("../helpers/responseHelper");
+const { getStoreId } = require("../helpers/storeHelper");
+const logger = require("../config/logger");
 const wishlistSelect = `
   SELECT
     w.id AS wishlist_id,
@@ -19,7 +18,7 @@ const wishlistSelect = `
   INNER JOIN products p ON p.id = w.product_id AND p.store_id = w.store_id
 `;
 
-export const getWishlist = async (req, res) => {
+const getWishlist = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const customerId = req.customer.id;
@@ -52,7 +51,7 @@ export const getWishlist = async (req, res) => {
   }
 };
 
-export const addToWishlist = async (req, res) => {
+const addToWishlist = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const customerId = req.customer.id;
@@ -90,7 +89,7 @@ export const addToWishlist = async (req, res) => {
   }
 };
 
-export const removeFromWishlist = async (req, res) => {
+const removeFromWishlist = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const customerId = req.customer.id;
@@ -112,7 +111,7 @@ export const removeFromWishlist = async (req, res) => {
   }
 };
 
-export const toggleWishlist = async (req, res) => {
+const toggleWishlist = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const customerId = req.customer.id;
@@ -152,7 +151,7 @@ export const toggleWishlist = async (req, res) => {
   }
 };
 
-export const checkWishlist = async (req, res) => {
+const checkWishlist = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const customerId = req.customer.id;
@@ -169,3 +168,9 @@ export const checkWishlist = async (req, res) => {
     return errorResponse(res, "Failed to check wishlist", 500);
   }
 };
+
+module.exports.getWishlist = getWishlist;
+module.exports.addToWishlist = addToWishlist;
+module.exports.removeFromWishlist = removeFromWishlist;
+module.exports.toggleWishlist = toggleWishlist;
+module.exports.checkWishlist = checkWishlist;

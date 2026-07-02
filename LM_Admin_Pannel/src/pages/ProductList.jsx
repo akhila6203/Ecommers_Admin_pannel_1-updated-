@@ -13,7 +13,8 @@ export default function ProductList() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(20);
+  // const [pageSize] = useState(20);
 
   const { data: productsResponse, isLoading, error, refetch } = useQuery({
     queryKey: ["products", page, pageSize],
@@ -173,7 +174,7 @@ export default function ProductList() {
         data={products}
         searchPlaceholder="Search products..."
         itemLabel="products"
-        paginate={false}
+        paginate={true}
       />
 
       {pagination && pagination.totalPages > 1 && (

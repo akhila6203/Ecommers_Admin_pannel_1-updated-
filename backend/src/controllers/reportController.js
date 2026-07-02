@@ -1,11 +1,10 @@
-import { query } from "../config/db.js";
-import { successResponse, errorResponse, paginatedResponse } from "../helpers/responseHelper.js";
-import { getStoreId } from "../helpers/storeHelper.js";
-import logger from "../config/logger.js";
-
+const { query } = require("../config/db");
+const { successResponse, errorResponse, paginatedResponse } = require("../helpers/responseHelper");
+const { getStoreId } = require("../helpers/storeHelper");
+const logger = require("../config/logger");
 // @desc    Sales report
 // @route   GET /api/reports/sales
-export const getSalesReport = async (req, res) => {
+const getSalesReport = async (req, res) => {
   try {
     const { start_date, end_date, group_by } = req.query;
     const groupClause = group_by === "monthly" ? "DATE_FORMAT(o.created_at, '%Y-%m')" :
@@ -53,7 +52,7 @@ export const getSalesReport = async (req, res) => {
 
 // @desc    Order report
 // @route   GET /api/reports/orders
-export const getOrderReport = async (req, res) => {
+const getOrderReport = async (req, res) => {
   try {
     const { start_date, end_date, status } = req.query;
     let whereClause = "WHERE o.store_id = ?";
@@ -83,7 +82,7 @@ export const getOrderReport = async (req, res) => {
 
 // @desc    Customer report
 // @route   GET /api/reports/customers
-export const getCustomerReport = async (req, res) => {
+const getCustomerReport = async (req, res) => {
   try {
     const { start_date, end_date } = req.query;
     let whereClause = "WHERE c.store_id = ?";
@@ -119,7 +118,7 @@ export const getCustomerReport = async (req, res) => {
 
 // @desc    Product report
 // @route   GET /api/reports/products
-export const getProductReport = async (req, res) => {
+const getProductReport = async (req, res) => {
   try {
     const { category_id, stock_status } = req.query;
     let whereClause = "WHERE p.store_id = ?";
@@ -157,7 +156,7 @@ export const getProductReport = async (req, res) => {
 
 // @desc    Inventory report
 // @route   GET /api/reports/inventory
-export const getInventoryReport = async (req, res) => {
+const getInventoryReport = async (req, res) => {
   try {
     const { stock_status } = req.query;
     let whereClause = "WHERE p.store_id = ?";
@@ -196,7 +195,7 @@ export const getInventoryReport = async (req, res) => {
 
 // @desc    GST report
 // @route   GET /api/reports/gst
-export const getGstReport = async (req, res) => {
+const getGstReport = async (req, res) => {
   try {
     const { start_date, end_date } = req.query;
     let whereClause = "WHERE o.store_id = ? AND o.order_status = 'delivered'";
@@ -232,7 +231,7 @@ export const getGstReport = async (req, res) => {
 
 // @desc    Get report summary / dashboard export
 // @route   GET /api/reports/summary
-export const getReportSummary = async (req, res) => {
+const getReportSummary = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const today = new Date().toISOString().split("T")[0];
@@ -256,3 +255,11 @@ export const getReportSummary = async (req, res) => {
     return errorResponse(res, "Failed to generate summary", 500);
   }
 };
+
+module.exports.getSalesReport = getSalesReport;
+module.exports.getOrderReport = getOrderReport;
+module.exports.getCustomerReport = getCustomerReport;
+module.exports.getProductReport = getProductReport;
+module.exports.getInventoryReport = getInventoryReport;
+module.exports.getGstReport = getGstReport;
+module.exports.getReportSummary = getReportSummary;

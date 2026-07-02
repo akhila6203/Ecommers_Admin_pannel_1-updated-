@@ -1,7 +1,6 @@
-import { describe, it, expect, beforeAll } from "@jest/globals";
-import request from "supertest";
-import app from "../src/server.js";
-
+const { describe, it, expect, beforeAll } = require("@jest/globals");
+const request = require("supertest");
+const app = require("../src/server");
 const ADMIN = { email: "admin@lms.com", password: "admin123" };
 let token = "";
 let refreshToken = "";

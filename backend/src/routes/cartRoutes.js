@@ -1,13 +1,12 @@
-import express from "express";
-import {
+const express = require("express");
+const {
   getCart,
   addToCart,
   updateCartItem,
   removeCartItem,
   clearCart,
-} from "../controllers/cartController.js";
-import { optionalCustomerAuth } from "../middleware/customerAuthMiddleware.js";
-
+} = require("../controllers/cartController");
+const { optionalCustomerAuth } = require("../middleware/customerAuthMiddleware");
 const router = express.Router();
 
 router.use(optionalCustomerAuth);
@@ -18,4 +17,4 @@ router.put("/:id", updateCartItem);
 router.delete("/:id", removeCartItem);
 router.delete("/", clearCart);
 
-export default router;
+module.exports = router;

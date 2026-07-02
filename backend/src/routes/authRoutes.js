@@ -1,8 +1,8 @@
-import express from "express";
-import { authenticate } from "../middleware/authMiddleware.js";
-import { authLimiter } from "../middleware/rateLimiterMiddleware.js";
-import { validateLogin, validateForgotPassword, validateResetPassword, validateChangePassword } from "../validators/authValidator.js";
-import {
+const express = require("express");
+const { authenticate } = require("../middleware/authMiddleware");
+const { authLimiter } = require("../middleware/rateLimiterMiddleware");
+const { validateLogin, validateForgotPassword, validateResetPassword, validateChangePassword } = require("../validators/authValidator");
+const {
   login,
   logout,
   forgotPassword,
@@ -11,8 +11,7 @@ import {
   refreshToken,
   getProfile,
   updateProfile,
-} from "../controllers/authController.js";
-
+} = require("../controllers/authController");
 const router = express.Router();
 
 router.post("/login", authLimiter, validateLogin, login);
@@ -24,4 +23,4 @@ router.post("/refresh-token", refreshToken);
 router.get("/profile", authenticate, getProfile);
 router.put("/profile", authenticate, updateProfile);
 
-export default router;
+module.exports = router;

@@ -1,7 +1,6 @@
-import { verifyToken } from "../helpers/jwtHelper.js";
-import { errorResponse } from "../helpers/responseHelper.js";
-
-export const authenticateCustomer = async (req, res, next) => {
+const { verifyToken } = require("../helpers/jwtHelper");
+const { errorResponse } = require("../helpers/responseHelper");
+const authenticateCustomer = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -31,7 +30,7 @@ export const authenticateCustomer = async (req, res, next) => {
   }
 };
 
-export const optionalCustomerAuth = async (req, res, next) => {
+const optionalCustomerAuth = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith("Bearer ")) {
@@ -52,3 +51,6 @@ export const optionalCustomerAuth = async (req, res, next) => {
   }
   next();
 };
+
+module.exports.authenticateCustomer = authenticateCustomer;
+module.exports.optionalCustomerAuth = optionalCustomerAuth;

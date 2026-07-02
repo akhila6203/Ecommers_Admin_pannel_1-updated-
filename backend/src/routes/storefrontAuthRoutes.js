@@ -1,5 +1,5 @@
-import express from "express";
-import {
+const express = require("express");
+const {
   register,
   login,
   logout,
@@ -14,10 +14,9 @@ import {
   updateAddress,
   deleteAddress,
   setDefaultAddress,
-} from "../controllers/storefrontAuthController.js";
-import { authenticateCustomer, optionalCustomerAuth } from "../middleware/customerAuthMiddleware.js";
-import { upload, uploadErrorHandler } from "../middleware/uploadMiddleware.js";
-
+} = require("../controllers/storefrontAuthController");
+const { authenticateCustomer, optionalCustomerAuth } = require("../middleware/customerAuthMiddleware");
+const { upload, uploadErrorHandler } = require("../middleware/uploadMiddleware");
 const router = express.Router();
 
 router.post("/send-otp", optionalCustomerAuth, sendOtp);
@@ -36,4 +35,4 @@ router.put("/addresses/:id", authenticateCustomer, updateAddress);
 router.delete("/addresses/:id", authenticateCustomer, deleteAddress);
 router.put("/addresses/:id/default", authenticateCustomer, setDefaultAddress);
 
-export default router;
+module.exports = router;

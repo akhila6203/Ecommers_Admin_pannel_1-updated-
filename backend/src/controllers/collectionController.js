@@ -1,9 +1,8 @@
-import { query } from "../config/db.js";
-import { generateSlug } from "../helpers/slugHelper.js";
-import { successResponse, errorResponse, paginatedResponse } from "../helpers/responseHelper.js";
-import { getStoreId } from "../helpers/storeHelper.js";
-import logger from "../config/logger.js";
-
+const { query } = require("../config/db");
+const { generateSlug } = require("../helpers/slugHelper");
+const { successResponse, errorResponse, paginatedResponse } = require("../helpers/responseHelper");
+const { getStoreId } = require("../helpers/storeHelper");
+const logger = require("../config/logger");
 const parseProductIds = (product_ids) => {
   if (product_ids === undefined || product_ids === null || product_ids === "") return [];
 
@@ -24,7 +23,7 @@ const parseProductIds = (product_ids) => {
   return raw.map((id) => parseInt(id, 10)).filter((id) => !Number.isNaN(id) && id > 0);
 };
 
-export const getCollections = async (req, res) => {
+const getCollections = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const page = parseInt(req.query.page) || 1;
@@ -68,7 +67,7 @@ export const getCollections = async (req, res) => {
   }
 };
 
-export const getCollection = async (req, res) => {
+const getCollection = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const collections = await query(
@@ -94,7 +93,7 @@ export const getCollection = async (req, res) => {
   }
 };
 
-export const createCollection = async (req, res) => {
+const createCollection = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const { name, description, label, type, sort_order, status, meta_title, meta_description, product_ids } = req.body;
@@ -144,7 +143,7 @@ export const createCollection = async (req, res) => {
   }
 };
 
-export const updateCollection = async (req, res) => {
+const updateCollection = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const existing = await query("SELECT * FROM collections WHERE id = ? AND store_id = ?", [req.params.id, storeId]);
@@ -203,7 +202,7 @@ export const updateCollection = async (req, res) => {
   }
 };
 
-export const deleteCollection = async (req, res) => {
+const deleteCollection = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const existing = await query("SELECT id FROM collections WHERE id = ? AND store_id = ?", [req.params.id, storeId]);
@@ -216,3 +215,9 @@ export const deleteCollection = async (req, res) => {
     return errorResponse(res, "Failed to delete collection", 500);
   }
 };
+
+module.exports.getCollections = getCollections;
+module.exports.getCollection = getCollection;
+module.exports.createCollection = createCollection;
+module.exports.updateCollection = updateCollection;
+module.exports.deleteCollection = deleteCollection;

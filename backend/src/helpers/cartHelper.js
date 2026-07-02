@@ -1,20 +1,19 @@
-import { query } from "../config/db.js";
-import { getStoreId } from "./storeHelper.js";
-
-export const getSessionId = (req) =>
+const { query } = require("../config/db");
+const { getStoreId } = require("./storeHelper");
+const getSessionId = (req) =>
   req.headers["x-cart-session-id"] ||
   req.body?.session_id ||
   req.query?.session_id ||
   null;
 
-export const resolveCartScope = (req) => {
+const resolveCartScope = (req) => {
   const storeId = getStoreId(req);
   const customerId = req.customer?.id || null;
   const sessionId = getSessionId(req);
   return { storeId, customerId, sessionId };
 };
 
-export const cartWhereClause = ({ storeId, customerId, sessionId }, alias = "cart") => {
+const cartWhereClause = ({ storeId, customerId, sessionId }, alias = "cart") => {
   const col = (name) => `${alias}.${name}`;
 
   if (customerId) {
@@ -32,7 +31,7 @@ export const cartWhereClause = ({ storeId, customerId, sessionId }, alias = "car
   return null;
 };
 
-export const mergeSessionCartToCustomer = async (storeId, sessionId, customerId) => {
+const mergeSessionCartToCustomer = async (storeId, sessionId, customerId) => {
   if (!sessionId || !customerId) return;
 
   const sessionItems = await query(
@@ -74,3 +73,8 @@ export const mergeSessionCartToCustomer = async (storeId, sessionId, customerId)
     }
   }
 };
+
+module.exports.getSessionId = getSessionId;
+module.exports.resolveCartScope = resolveCartScope;
+module.exports.cartWhereClause = cartWhereClause;
+module.exports.mergeSessionCartToCustomer = mergeSessionCartToCustomer;

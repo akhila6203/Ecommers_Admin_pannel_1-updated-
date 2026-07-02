@@ -1,6 +1,5 @@
-import slugify from "slugify";
-
-export const generateSlug = (text) => {
+const slugify = require("slugify");
+const generateSlug = (text) => {
   return slugify(text, {
     lower: true,
     strict: true,
@@ -8,7 +7,7 @@ export const generateSlug = (text) => {
   });
 };
 
-export const generateUniqueSlug = async (queryFn, text, excludeId = null) => {
+const generateUniqueSlug = async (queryFn, text, excludeId = null) => {
   let slug = generateSlug(text);
   let counter = 1;
   let exists = true;
@@ -27,3 +26,6 @@ export const generateUniqueSlug = async (queryFn, text, excludeId = null) => {
 
   return slug;
 };
+
+module.exports.generateSlug = generateSlug;
+module.exports.generateUniqueSlug = generateUniqueSlug;

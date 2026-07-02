@@ -1,7 +1,6 @@
-import { query } from "../config/db.js";
-import logger from "../config/logger.js";
-
-export const auditLog = (action, entity) => {
+const { query } = require("../config/db");
+const logger = require("../config/logger");
+const auditLog = (action, entity) => {
   return async (req, res, next) => {
     const originalJson = res.json.bind(res);
     res.json = async function (body) {
@@ -30,7 +29,7 @@ export const auditLog = (action, entity) => {
   };
 };
 
-export const activityLog = async (adminId, action, description) => {
+const activityLog = async (adminId, action, description) => {
   try {
     await query(
       "INSERT INTO activity_logs (admin_id, action, description, created_at) VALUES (?, ?, ?, NOW())",
@@ -40,3 +39,6 @@ export const activityLog = async (adminId, action, description) => {
     logger.error("Activity log error:", error);
   }
 };
+
+module.exports.auditLog = auditLog;
+module.exports.activityLog = activityLog;

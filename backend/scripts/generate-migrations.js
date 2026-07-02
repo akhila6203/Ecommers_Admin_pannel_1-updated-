@@ -1,10 +1,5 @@
-import fs from "fs";
-import path from "path";
-import { fileURLToPath } from "url";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
+const fs = require("fs");
+const path = require("path");
 const dumpPath = path.join(
   process.env.USERPROFILE || "",
   ".cursor/projects/c-Users-KUMMARI-AKHILA-Ecommerce-admin/agent-tools/4e974493-200c-4dad-b859-a9561d61abc9.txt"

@@ -1,11 +1,6 @@
-import winston from "winston";
-import path from "path";
-import { fileURLToPath } from "url";
-import fs from "fs";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
+const winston = require("winston");
+const path = require("path");
+const fs = require("fs");
 const logDir = path.join(__dirname, "../../logs");
 
 if (!fs.existsSync(logDir)) {
@@ -55,4 +50,4 @@ const logger = winston.createLogger({
   ],
 });
 
-export default logger;
+module.exports = logger;

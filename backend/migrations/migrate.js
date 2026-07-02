@@ -1,5 +1,4 @@
-import { runPendingMigrations } from "../src/config/runMigrations.js";
-
+const { runPendingMigrations } = require("../src/config/runMigrations");
 runPendingMigrations()
   .then(() => {
     console.log("All migrations completed successfully");

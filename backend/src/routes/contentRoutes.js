@@ -1,12 +1,38 @@
-import express from "express";
-import { authenticate } from "../middleware/authMiddleware.js";
-import { authorize } from "../middleware/roleMiddleware.js";
-import { upload, uploadErrorHandler } from "../middleware/uploadMiddleware.js";
-import { getContentPage, updateContentPage } from "../controllers/contentController.js";
+const express = require("express");
+const { authenticate ,  optionalAuth} = require("../middleware/authMiddleware");
+const { authorize } = require("../middleware/roleMiddleware");
+const { upload, uploadErrorHandler } = require("../middleware/uploadMiddleware");
+const { getContentPage, updateContentPage } = require("../controllers/contentController");
 
 const router = express.Router();
 
-router.get("/:page_key", getContentPage);
-router.put("/:page_key", authenticate, authorize("super_admin", "admin"), upload.single("image"), uploadErrorHandler, updateContentPage);
+router.get("/:page_key", optionalAuth, getContentPage);
+// router.get(
+//   "/:page_key",
+//   authenticate,
+//   authorize("super_admin", "admin", "manager", "staff"),
+//   getContentPage
+// );
 
-export default router;
+router.put(
+  "/:page_key",
+  authenticate,
+  authorize("super_admin", "admin"),
+  upload.single("image"),
+  uploadErrorHandler,
+  updateContentPage
+);
+
+module.exports = router;
+
+// const express = require("express");
+// const { authenticate } = require("../middleware/authMiddleware");
+// const { authorize } = require("../middleware/roleMiddleware");
+// const { upload, uploadErrorHandler } = require("../middleware/uploadMiddleware");
+// const { getContentPage, updateContentPage } = require("../controllers/contentController");
+// const router = express.Router();
+
+// router.get("/:page_key", getContentPage);
+// router.put("/:page_key", authenticate, authorize("super_admin", "admin"), upload.single("image"), uploadErrorHandler, updateContentPage);
+
+// module.exports = router;

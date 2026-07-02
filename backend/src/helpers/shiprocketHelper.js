@@ -1,6 +1,5 @@
-import { query } from "../config/db.js";
-import logger from "../config/logger.js";
-
+const { query } = require("../config/db");
+const logger = require("../config/logger");
 const SHIPROCKET_BASE_URL = "https://apiv2.shiprocket.in/v1/external";
 
 /** @type {Map<number, { token: string, expiresAt: number }>} */
@@ -8,7 +7,7 @@ const tokenCache = new Map();
 
 const TOKEN_TTL_MS = 9 * 24 * 60 * 60 * 1000;
 
-export const mapShiprocketStatus = (rawStatus = "") => {
+const mapShiprocketStatus = (rawStatus = "") => {
   const status = String(rawStatus).toLowerCase().trim();
   if (!status) return null;
 
@@ -38,7 +37,7 @@ export const mapShiprocketStatus = (rawStatus = "") => {
   return null;
 };
 
-export const getShiprocketConfig = async (storeId) => {
+const getShiprocketConfig = async (storeId) => {
   const rows = await query(
     `SELECT shiprocket_enabled, shiprocket_email, shiprocket_password, shiprocket_channel_id,  shiprocket_pickup_location
      FROM integration_settings
@@ -93,7 +92,7 @@ const loginShiprocket = async (storeId) => {
   return data.token;
 };
 
-export const shiprocketApi = async (storeId, method, endpoint, data = null) => {
+const shiprocketApi = async (storeId, method, endpoint, data = null) => {
   const url = endpoint.startsWith("http")
     ? endpoint
     : `${SHIPROCKET_BASE_URL}${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`;
@@ -140,7 +139,7 @@ export const shiprocketApi = async (storeId, method, endpoint, data = null) => {
   return payload;
 };
 
-export const buildAdhocOrderPayload = (order, orderItems, config, overrides = {}) => {
+const buildAdhocOrderPayload = (order, orderItems, config, overrides = {}) => {
   const orderDate = order.created_at
     ? new Date(order.created_at).toISOString().slice(0, 19).replace("T", " ")
     : new Date().toISOString().slice(0, 19).replace("T", " ");
@@ -195,13 +194,13 @@ export const buildAdhocOrderPayload = (order, orderItems, config, overrides = {}
   return payload;
 };
 
-export const createAdhocOrder = async (storeId, order, orderItems, overrides = {}) => {
+const createAdhocOrder = async (storeId, order, orderItems, overrides = {}) => {
   const config = await getShiprocketConfig(storeId);
   const payload = buildAdhocOrderPayload(order, orderItems, config, overrides);
   return shiprocketApi(storeId, "POST", "/orders/create/adhoc", payload);
 };
 
-export const assignAwb = async (storeId, shipmentId, courierId = null) => {
+const assignAwb = async (storeId, shipmentId, courierId = null) => {
   const payload = { shipment_id: parseInt(shipmentId, 10) };
   if (courierId) {
     payload.courier_id = parseInt(courierId, 10);
@@ -209,12 +208,12 @@ export const assignAwb = async (storeId, shipmentId, courierId = null) => {
   return shiprocketApi(storeId, "POST", "/courier/assign/awb", payload);
 };
 
-export const trackByAwb = async (storeId, awbCode) => {
+const trackByAwb = async (storeId, awbCode) => {
   const encoded = encodeURIComponent(String(awbCode).trim());
   return shiprocketApi(storeId, "GET", `/courier/track/awb/${encoded}`);
 };
 
-export const extractTrackingStatus = (trackingPayload = {}) => {
+const extractTrackingStatus = (trackingPayload = {}) => {
   const trackingData = trackingPayload.tracking_data || trackingPayload.data || trackingPayload;
   const shipmentTrack = Array.isArray(trackingData?.shipment_track)
     ? trackingData.shipment_track[0]
@@ -232,7 +231,7 @@ export const extractTrackingStatus = (trackingPayload = {}) => {
   );
 };
 
-export const extractTrackingUrl = (assignPayload = {}, trackingPayload = {}) => {
+const extractTrackingUrl = (assignPayload = {}, trackingPayload = {}) => {
   return (
     assignPayload.response?.data?.tracking_url ||
     assignPayload.tracking_url ||
@@ -242,7 +241,7 @@ export const extractTrackingUrl = (assignPayload = {}, trackingPayload = {}) => 
   );
 };
 
-export const applyShiprocketStatusToOrder = async ({
+const applyShiprocketStatusToOrder = async ({
   storeId,
   orderId,
   shiprocketStatus,
@@ -283,7 +282,7 @@ export const applyShiprocketStatusToOrder = async ({
   return { updated: true, order_status: mappedStatus, previous_status: previousStatus };
 };
 
-export const findOrderByTrackingReference = async (reference) => {
+const findOrderByTrackingReference = async (reference) => {
   const value = String(reference || "").trim();
   if (!value) return null;
 
@@ -301,14 +300,28 @@ export const findOrderByTrackingReference = async (reference) => {
 
 
 
-export const generateShiprocketLabel = async (storeId, shipmentId) => {
+const generateShiprocketLabel = async (storeId, shipmentId) => {
   return shiprocketApi(storeId, "POST", "/courier/generate/label", {
     shipment_id: [Number(shipmentId)],
   });
 };
 
-export const requestShiprocketPickup = async (storeId, shipmentId) => {
+const requestShiprocketPickup = async (storeId, shipmentId) => {
   return shiprocketApi(storeId, "POST", "/courier/generate/pickup", {
     shipment_id: [Number(shipmentId)],
   });
 };
+
+module.exports.mapShiprocketStatus = mapShiprocketStatus;
+module.exports.getShiprocketConfig = getShiprocketConfig;
+module.exports.shiprocketApi = shiprocketApi;
+module.exports.buildAdhocOrderPayload = buildAdhocOrderPayload;
+module.exports.createAdhocOrder = createAdhocOrder;
+module.exports.assignAwb = assignAwb;
+module.exports.trackByAwb = trackByAwb;
+module.exports.extractTrackingStatus = extractTrackingStatus;
+module.exports.extractTrackingUrl = extractTrackingUrl;
+module.exports.applyShiprocketStatusToOrder = applyShiprocketStatusToOrder;
+module.exports.findOrderByTrackingReference = findOrderByTrackingReference;
+module.exports.generateShiprocketLabel = generateShiprocketLabel;
+module.exports.requestShiprocketPickup = requestShiprocketPickup;

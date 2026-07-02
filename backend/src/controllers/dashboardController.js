@@ -1,9 +1,8 @@
-import { query } from "../config/db.js";
-import { successResponse, errorResponse } from "../helpers/responseHelper.js";
-import { getStoreId } from "../helpers/storeHelper.js";
-import logger from "../config/logger.js";
-
-export const getDashboardStats = async (req, res) => {
+const { query } = require("../config/db");
+const { successResponse, errorResponse } = require("../helpers/responseHelper");
+const { getStoreId } = require("../helpers/storeHelper");
+const logger = require("../config/logger");
+const getDashboardStats = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const [aggregates] = await query(`
@@ -70,7 +69,7 @@ export const getDashboardStats = async (req, res) => {
   }
 };
 
-export const getRevenueAnalytics = async (req, res) => {
+const getRevenueAnalytics = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const period = req.query.period || "monthly";
@@ -107,7 +106,7 @@ export const getRevenueAnalytics = async (req, res) => {
   }
 };
 
-export const getSalesAnalytics = async (req, res) => {
+const getSalesAnalytics = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const [todaySales, weekSales, monthSales, salesByCategory] = await Promise.all([
@@ -132,7 +131,7 @@ export const getSalesAnalytics = async (req, res) => {
   }
 };
 
-export const getOrderAnalytics = async (req, res) => {
+const getOrderAnalytics = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const [statusCounts, paymentStatuses, monthlyOrders] = await Promise.all([
@@ -154,3 +153,8 @@ export const getOrderAnalytics = async (req, res) => {
     return errorResponse(res, "Failed to fetch order analytics", 500);
   }
 };
+
+module.exports.getDashboardStats = getDashboardStats;
+module.exports.getRevenueAnalytics = getRevenueAnalytics;
+module.exports.getSalesAnalytics = getSalesAnalytics;
+module.exports.getOrderAnalytics = getOrderAnalytics;

@@ -1,6 +1,5 @@
-import { errorResponse } from "../helpers/responseHelper.js";
-
-export const validateProduct = (req, res, next) => {
+const { errorResponse } = require("../helpers/responseHelper");
+const validateProduct = (req, res, next) => {
   const { name, price, category_id } = req.body;
   const errors = [];
 
@@ -18,7 +17,7 @@ export const validateProduct = (req, res, next) => {
   next();
 };
 
-export const validateVariantOption = (req, res, next) => {
+const validateVariantOption = (req, res, next) => {
   const { option_name, option_values } = req.body;
   const errors = [];
 
@@ -42,7 +41,7 @@ export const validateVariantOption = (req, res, next) => {
   next();
 };
 
-export const validateProductSeo = (req, res, next) => {
+const validateProductSeo = (req, res, next) => {
   const errors = [];
   const { seo_title, canonical_url } = req.body;
 
@@ -56,3 +55,7 @@ export const validateProductSeo = (req, res, next) => {
   if (errors.length) return errorResponse(res, "Validation failed", 400, errors);
   next();
 };
+
+module.exports.validateProduct = validateProduct;
+module.exports.validateVariantOption = validateVariantOption;
+module.exports.validateProductSeo = validateProductSeo;

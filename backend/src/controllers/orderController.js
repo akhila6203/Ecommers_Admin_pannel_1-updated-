@@ -1,9 +1,9 @@
-import { query, getConnection } from "../config/db.js";
-import { generateOrderNumber, generateInvoiceNumber } from "../helpers/generateHelper.js";
-import { successResponse, errorResponse, paginatedResponse } from "../helpers/responseHelper.js";
-import { recordCouponUsage } from "./couponController.js";
-import { getStoreId } from "../helpers/storeHelper.js";
-import {
+const { query, getConnection } = require("../config/db");
+const { generateOrderNumber, generateInvoiceNumber } = require("../helpers/generateHelper");
+const { successResponse, errorResponse, paginatedResponse } = require("../helpers/responseHelper");
+const { recordCouponUsage } = require("./couponController");
+const { getStoreId } = require("../helpers/storeHelper");
+const {
   applyShiprocketStatusToOrder,
   assignAwb,
   createAdhocOrder,
@@ -13,12 +13,11 @@ import {
   trackByAwb,
   generateShiprocketLabel,
   requestShiprocketPickup,
-} from "../helpers/shiprocketHelper.js";
-import logger from "../config/logger.js";
-
+} = require("../helpers/shiprocketHelper");
+const logger = require("../config/logger");
 // @desc    Get order statistics for admin dashboard
 // @route   GET /api/orders/stats
-export const getOrderStats = async (req, res) => {
+const getOrderStats = async (req, res) => {
   try {
     const storeId = getStoreId(req);
 
@@ -73,7 +72,7 @@ export const getOrderStats = async (req, res) => {
 
 // @desc    Get all orders
 // @route   GET /api/orders
-export const getOrders = async (req, res) => {
+const getOrders = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const page = parseInt(req.query.page) || 1;
@@ -126,7 +125,7 @@ export const getOrders = async (req, res) => {
 
 // @desc    Get single order
 // @route   GET /api/orders/:id
-export const getOrder = async (req, res) => {
+const getOrder = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const orders = await query("SELECT * FROM orders WHERE id = ? AND store_id = ?", [req.params.id, storeId]);
@@ -151,7 +150,7 @@ export const getOrder = async (req, res) => {
 
 // @desc    Create order (admin)
 // @route   POST /api/orders
-export const createOrder = async (req, res) => {
+const createOrder = async (req, res) => {
   const connection = await getConnection();
   try {
     const storeId = getStoreId(req);
@@ -223,7 +222,7 @@ export const createOrder = async (req, res) => {
 
 // @desc    Update order status
 // @route   PUT /api/orders/:id/status
-export const updateOrderStatus = async (req, res) => {
+const updateOrderStatus = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const { status, note } = req.body;
@@ -304,7 +303,7 @@ export const updateOrderStatus = async (req, res) => {
 
 // @desc    Update payment status
 // @route   PUT /api/orders/:id/payment
-export const updatePaymentStatus = async (req, res) => {
+const updatePaymentStatus = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const { payment_status, payment_id } = req.body;
@@ -327,7 +326,7 @@ export const updatePaymentStatus = async (req, res) => {
 
 // @desc    Add order note
 // @route   POST /api/orders/:id/notes
-export const addOrderNote = async (req, res) => {
+const addOrderNote = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const { note, note_type, is_visible_to_customer } = req.body;
@@ -344,7 +343,7 @@ export const addOrderNote = async (req, res) => {
 
 // @desc    Generate invoice
 // @route   GET /api/orders/:id/invoice
-export const generateInvoice = async (req, res) => {
+const generateInvoice = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const orders = await query("SELECT * FROM orders WHERE id = ? AND store_id = ?", [req.params.id, storeId]);
@@ -367,7 +366,7 @@ export const generateInvoice = async (req, res) => {
 
 // @desc    Delete order
 // @route   DELETE /api/orders/:id
-export const deleteOrder = async (req, res) => {
+const deleteOrder = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     await query("DELETE FROM orders WHERE id = ? AND store_id = ?", [req.params.id, storeId]);
@@ -380,7 +379,7 @@ export const deleteOrder = async (req, res) => {
 
 // @desc    Create Shiprocket shipment for an order
 // @route   POST /api/orders/:id/shiprocket/create-shipment
-export const createShiprocketShipment = async (req, res) => {
+const createShiprocketShipment = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const orderId = req.params.id;
@@ -420,12 +419,15 @@ export const createShiprocketShipment = async (req, res) => {
       }
 
     const adhocResponse = await createAdhocOrder(storeId, order, orderItems, {
+      
   weight: Number(weight),
   length: Number(length),
   breadth: Number(breadth),
   height: Number(height),
   pickup_location,
 });
+console.log("SHIPROCKET ADHOC RESPONSE:");
+console.log(JSON.stringify(adhocResponse, null, 2));
     // const adhocResponse = await createAdhocOrder(storeId, order, orderItems, {
     //   weight,
     //   length,
@@ -448,76 +450,110 @@ export const createShiprocketShipment = async (req, res) => {
       return errorResponse(res, "Shiprocket did not return a shipment ID", 502);
     }
 
-    const awbResponse = await assignAwb(storeId, shipmentId, courier_id || null);
-    const awbPayload = awbResponse.response?.data || awbResponse.data || awbResponse;
+    // const awbResponse = await assignAwb(storeId, shipmentId, courier_id || null);
+    // const awbPayload = awbResponse.response?.data || awbResponse.data || awbResponse;
 
-    const awbCode =
-      awbPayload.awb_code ||
-      awbPayload.awb ||
-      awbResponse.awb_code ||
-      null;
-    const courierName =
-      awbPayload.courier_name ||
-      awbPayload.courier ||
-      awbResponse.courier_name ||
-      null;
-    const trackingUrl = extractTrackingUrl(awbResponse);
+    // const awbCode =
+    //   awbPayload.awb_code ||
+    //   awbPayload.awb ||
+    //   awbResponse.awb_code ||
+    //   null;
+    // const courierName =
+    //   awbPayload.courier_name ||
+    //   awbPayload.courier ||
+    //   awbResponse.courier_name ||
+    //   null;
+    // const trackingUrl = extractTrackingUrl(awbResponse);
 
-    if (!awbCode) {
-      logger.error("Shiprocket AWB assignment missing awb_code:", awbResponse);
-      return errorResponse(res, "Shiprocket did not return an AWB code", 502);
-    }
-
-    await query(
-      `UPDATE orders
-       SET shiprocket_order_id = ?,
-           shiprocket_shipment_id = ?,
-           awb_code = ?,
-           tracking_number = ?,
-           tracking_url = COALESCE(?, tracking_url),
-           courier_name = ?,
-           shipping_method = COALESCE(?, shipping_method),
-           order_status = 'shipped'
-       WHERE id = ? AND store_id = ?`,
-      [
-        shiprocketOrderId ? String(shiprocketOrderId) : null,
-        String(shipmentId),
-        awbCode,
-        awbCode,
-        trackingUrl,
-        courierName,
-        courierName || "Shiprocket",
-        orderId,
-        storeId,
-      ]
-    );
+    // if (!awbCode) {
+    //   logger.error("Shiprocket AWB assignment missing awb_code:", awbResponse);
+    //   return errorResponse(res, "Shiprocket did not return an AWB code", 502);
+    // }
 
     await query(
-      "INSERT INTO order_timeline (store_id, order_id, status, note, created_by) VALUES (?, ?, 'shipped', ?, ?)",
-      [
-        storeId,
-        orderId,
-        `Shiprocket shipment created. AWB: ${awbCode}${courierName ? ` via ${courierName}` : ""}`,
-        req.admin?.id || null,
-      ]
-    );
+  `UPDATE orders
+   SET shiprocket_order_id = ?,
+       shiprocket_shipment_id = ?,
+       shipping_method = 'Shiprocket',
+       order_status = 'packed'
+   WHERE id = ? AND store_id = ?`,
+  [
+    shiprocketOrderId ? String(shiprocketOrderId) : null,
+    String(shipmentId),
+    orderId,
+    storeId,
+  ]
+);
+    // await query(
+    //   `UPDATE orders
+    //    SET shiprocket_order_id = ?,
+    //        shiprocket_shipment_id = ?,
+    //        awb_code = ?,
+    //        tracking_number = ?,
+    //        tracking_url = COALESCE(?, tracking_url),
+    //        courier_name = ?,
+    //        shipping_method = COALESCE(?, shipping_method),
+    //        order_status = 'shipped'
+    //    WHERE id = ? AND store_id = ?`,
+    //   [
+    //     shiprocketOrderId ? String(shiprocketOrderId) : null,
+    //     String(shipmentId),
+    //     awbCode,
+    //     awbCode,
+    //     trackingUrl,
+    //     courierName,
+    //     courierName || "Shiprocket",
+    //     orderId,
+    //     storeId,
+    //   ]
+    // );
+
+    await query(
+  "INSERT INTO order_timeline (store_id, order_id, status, note, created_by) VALUES (?, ?, 'packed', ?, ?)",
+  [
+    storeId,
+    orderId,
+    `Shiprocket shipment created. Shipment ID: ${shipmentId}`,
+    req.admin?.id || null,
+  ]
+);
+    // await query(
+    //   "INSERT INTO order_timeline (store_id, order_id, status, note, created_by) VALUES (?, ?, 'shipped', ?, ?)",
+    //   [
+    //     storeId,
+    //     orderId,
+    //     `Shiprocket shipment created. AWB: ${awbCode}${courierName ? ` via ${courierName}` : ""}`,
+    //     req.admin?.id || null,
+    //   ]
+    // );
 
     const updated = await query("SELECT * FROM orders WHERE id = ? AND store_id = ?", [orderId, storeId]);
 
     return successResponse(
-      res,
-      {
-        order: updated[0],
-        shiprocket: {
-          shiprocket_order_id: shiprocketOrderId,
-          shiprocket_shipment_id: shipmentId,
-          awb_code: awbCode,
-          courier_name: courierName,
-          tracking_url: trackingUrl,
-        },
-      },
-      "Shiprocket shipment created successfully"
-    );
+  res,
+  {
+    order: updated[0],
+    shiprocket: {
+      shiprocket_order_id: shiprocketOrderId,
+      shiprocket_shipment_id: shipmentId,
+    },
+  },
+  "Shiprocket shipment created successfully"
+);
+    // return successResponse(
+    //   res,
+    //   {
+    //     order: updated[0],
+    //     shiprocket: {
+    //       shiprocket_order_id: shiprocketOrderId,
+    //       shiprocket_shipment_id: shipmentId,
+    //       awb_code: awbCode,
+    //       courier_name: courierName,
+    //       tracking_url: trackingUrl,
+    //     },
+    //   },
+    //   "Shiprocket shipment created successfully"
+    // );
   } catch (error) {
     logger.error("Create Shiprocket shipment error:", error);
     const statusCode =
@@ -528,7 +564,7 @@ export const createShiprocketShipment = async (req, res) => {
 
 // @desc    Sync Shiprocket tracking status for an order
 // @route   POST /api/orders/:id/shiprocket/sync-tracking
-export const syncShiprocketTracking = async (req, res) => {
+const syncShiprocketTracking = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const orderId = req.params.id;
@@ -602,7 +638,7 @@ export const syncShiprocketTracking = async (req, res) => {
 
 // @desc    Export orders
 // @route   GET /api/orders/export
-export const exportOrders = async (req, res) => {
+const exportOrders = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const orders = await query(
@@ -619,7 +655,126 @@ export const exportOrders = async (req, res) => {
   }
 };
 
-export const generateShippingLabel = async (req, res) => {
+const assignShiprocketAwb = async (req, res) => {
+  try {
+    const storeId = getStoreId(req);
+    const orderId = req.params.id;
+    const { courier_id = null } = req.body || {};
+
+    const rows = await query(
+      "SELECT id, shiprocket_shipment_id, awb_code FROM orders WHERE id = ? AND store_id = ?",
+      [orderId, storeId]
+    );
+
+    if (!rows.length) {
+      return errorResponse(res, "Order not found", 404);
+    }
+
+    const order = rows[0];
+
+    if (!order.shiprocket_shipment_id) {
+      return errorResponse(res, "Shipment not created yet", 400);
+    }
+
+    if (order.awb_code) {
+      return errorResponse(res, "AWB already assigned for this order", 400);
+    }
+
+    await getShiprocketConfig(storeId);
+
+    const awbResponse = await assignAwb(
+      storeId,
+      order.shiprocket_shipment_id,
+      courier_id || null
+    );
+
+    const awbPayload =
+      awbResponse.response?.data ||
+      awbResponse.data ||
+      awbResponse;
+
+    const awbCode =
+      awbPayload.awb_code ||
+      awbPayload.awb ||
+      awbResponse.awb_code ||
+      null;
+
+    const courierName =
+      awbPayload.courier_name ||
+      awbPayload.courier ||
+      awbResponse.courier_name ||
+      null;
+
+    const trackingUrl = extractTrackingUrl(awbResponse);
+
+    if (!awbCode) {
+      logger.error("Shiprocket AWB assignment missing awb_code:", awbResponse);
+      return errorResponse(
+        res,
+        awbResponse.message || "Shiprocket did not return an AWB code",
+        502
+      );
+    }
+
+    await query(
+      `UPDATE orders
+       SET awb_code = ?,
+           tracking_number = ?,
+           tracking_url = COALESCE(?, tracking_url),
+           courier_name = ?,
+           shipping_method = COALESCE(?, shipping_method),
+           order_status = 'shipped'
+       WHERE id = ? AND store_id = ?`,
+      [
+        awbCode,
+        awbCode,
+        trackingUrl,
+        courierName,
+        courierName || "Shiprocket",
+        orderId,
+        storeId,
+      ]
+    );
+
+    await query(
+      "INSERT INTO order_timeline (store_id, order_id, status, note, created_by) VALUES (?, ?, 'shipped', ?, ?)",
+      [
+        storeId,
+        orderId,
+        `Shiprocket AWB assigned. AWB: ${awbCode}${courierName ? ` via ${courierName}` : ""}`,
+        req.admin?.id || null,
+      ]
+    );
+
+    const updated = await query(
+      "SELECT * FROM orders WHERE id = ? AND store_id = ?",
+      [orderId, storeId]
+    );
+
+    return successResponse(
+      res,
+      {
+        order: updated[0],
+        shiprocket: {
+          awb_code: awbCode,
+          courier_name: courierName,
+          tracking_url: trackingUrl,
+          raw: awbResponse,
+        },
+      },
+      "AWB assigned successfully"
+    );
+  } catch (error) {
+    logger.error("Assign Shiprocket AWB error:", error);
+    return errorResponse(
+      res,
+      error.message || "Failed to assign AWB",
+      500
+    );
+  }
+};
+
+const generateShippingLabel = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const orderId = req.params.id;
@@ -660,7 +815,7 @@ export const generateShippingLabel = async (req, res) => {
   }
 };
 
-export const scheduleShiprocketPickup = async (req, res) => {
+const scheduleShiprocketPickup = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const orderId = req.params.id;
@@ -707,3 +862,19 @@ export const scheduleShiprocketPickup = async (req, res) => {
     return errorResponse(res, error.message || "Failed to schedule pickup", 500);
   }
 };
+
+module.exports.getOrderStats = getOrderStats;
+module.exports.getOrders = getOrders;
+module.exports.getOrder = getOrder;
+module.exports.createOrder = createOrder;
+module.exports.updateOrderStatus = updateOrderStatus;
+module.exports.updatePaymentStatus = updatePaymentStatus;
+module.exports.addOrderNote = addOrderNote;
+module.exports.generateInvoice = generateInvoice;
+module.exports.deleteOrder = deleteOrder;
+module.exports.createShiprocketShipment = createShiprocketShipment;
+module.exports.syncShiprocketTracking = syncShiprocketTracking;
+module.exports.exportOrders = exportOrders;
+module.exports.generateShippingLabel = generateShippingLabel;
+module.exports.scheduleShiprocketPickup = scheduleShiprocketPickup;
+module.exports.assignShiprocketAwb = assignShiprocketAwb;

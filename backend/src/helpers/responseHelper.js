@@ -1,4 +1,4 @@
-export const successResponse = (res, data = null, message = "Success", statusCode = 200) => {
+const successResponse = (res, data = null, message = "Success", statusCode = 200) => {
   return res.status(statusCode).json({
     success: true,
     message,
@@ -7,7 +7,7 @@ export const successResponse = (res, data = null, message = "Success", statusCod
   });
 };
 
-export const errorResponse = (res, message = "Internal Server Error", statusCode = 500, errors = null) => {
+const errorResponse = (res, message = "Internal Server Error", statusCode = 500, errors = null) => {
   const response = {
     success: false,
     message,
@@ -17,7 +17,7 @@ export const errorResponse = (res, message = "Internal Server Error", statusCode
   return res.status(statusCode).json(response);
 };
 
-export const paginatedResponse = (res, data, total, page, limit, message = "Success") => {
+const paginatedResponse = (res, data, total, page, limit, message = "Success") => {
   const totalPages = Math.ceil(total / limit);
   return res.status(200).json({
     success: true,
@@ -35,3 +35,7 @@ export const paginatedResponse = (res, data, total, page, limit, message = "Succ
     timestamp: new Date().toISOString(),
   });
 };
+
+module.exports.successResponse = successResponse;
+module.exports.errorResponse = errorResponse;
+module.exports.paginatedResponse = paginatedResponse;

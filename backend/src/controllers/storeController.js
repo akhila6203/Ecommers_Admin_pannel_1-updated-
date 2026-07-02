@@ -1,9 +1,8 @@
-import { query } from "../config/db.js";
-import { generateSlug, generateUniqueSlug } from "../helpers/slugHelper.js";
-import { successResponse, errorResponse } from "../helpers/responseHelper.js";
-import { getStoreId } from "../helpers/storeHelper.js";
-import logger from "../config/logger.js";
-
+const { query } = require("../config/db");
+const { generateSlug, generateUniqueSlug } = require("../helpers/slugHelper");
+const { successResponse, errorResponse } = require("../helpers/responseHelper");
+const { getStoreId } = require("../helpers/storeHelper");
+const logger = require("../config/logger");
 const STORE_COLUMNS = "id, name, slug, domain, status, created_at, updated_at";
 
 const checkStoreSlug = async (slug, excludeId = null) => {
@@ -17,7 +16,7 @@ const checkStoreSlug = async (slug, excludeId = null) => {
   return result.length > 0 ? result[0] : null;
 };
 
-export const getStores = async (req, res) => {
+const getStores = async (req, res) => {
   try {
     const stores = await query(
       `SELECT ${STORE_COLUMNS} FROM stores ORDER BY id ASC`
@@ -29,7 +28,7 @@ export const getStores = async (req, res) => {
   }
 };
 
-export const getStore = async (req, res) => {
+const getStore = async (req, res) => {
   try {
     const stores = await query(
       `SELECT ${STORE_COLUMNS} FROM stores WHERE id = ?`,
@@ -43,7 +42,7 @@ export const getStore = async (req, res) => {
   }
 };
 
-export const createStore = async (req, res) => {
+const createStore = async (req, res) => {
   try {
     const { name, slug: slugInput, domain, status } = req.body;
     if (!name?.trim()) return errorResponse(res, "Store name is required", 400);
@@ -75,7 +74,7 @@ export const createStore = async (req, res) => {
   }
 };
 
-export const updateStore = async (req, res) => {
+const updateStore = async (req, res) => {
   try {
     const storeId = parseInt(req.params.id, 10);
     const existing = await query(`SELECT ${STORE_COLUMNS} FROM stores WHERE id = ?`, [storeId]);
@@ -108,7 +107,7 @@ export const updateStore = async (req, res) => {
   }
 };
 
-export const deleteStore = async (req, res) => {
+const deleteStore = async (req, res) => {
   try {
     const storeId = parseInt(req.params.id, 10);
     if (storeId === 1) {
@@ -126,7 +125,7 @@ export const deleteStore = async (req, res) => {
   }
 };
 
-export const getCurrentStore = async (req, res) => {
+const getCurrentStore = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const stores = await query(`SELECT ${STORE_COLUMNS} FROM stores WHERE id = ?`, [storeId]);
@@ -137,3 +136,10 @@ export const getCurrentStore = async (req, res) => {
     return errorResponse(res, "Failed to fetch store", 500);
   }
 };
+
+module.exports.getStores = getStores;
+module.exports.getStore = getStore;
+module.exports.createStore = createStore;
+module.exports.updateStore = updateStore;
+module.exports.deleteStore = deleteStore;
+module.exports.getCurrentStore = getCurrentStore;

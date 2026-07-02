@@ -212,11 +212,11 @@ export default function Collections() {
             data={collections}
             emptyMessage="No collections found."
             itemLabel="collections"
-            paginate={false}
+            paginate={true}
           />
         )}
 
-        {pagination && pagination.totalPages > 1 && (
+        {/* {pagination && pagination.totalPages > 1 && (
           <div className="flex justify-center gap-2">
             <Button variant="outline" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Previous</Button>
             <span className="text-sm text-muted-foreground self-center">
@@ -224,7 +224,7 @@ export default function Collections() {
             </span>
             <Button variant="outline" disabled={page >= pagination.totalPages} onClick={() => setPage((p) => p + 1)}>Next</Button>
           </div>
-        )}
+        )} */}
 
         {/* Create/Edit Modal */}
         {modalOpen && (

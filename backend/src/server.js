@@ -1,49 +1,46 @@
-import express from "express";
-import cors from "cors";
-import helmet from "helmet";
-import dotenv from "dotenv";
-import path from "path";
-import { fileURLToPath } from "url";
-import { testConnection } from "./config/db.js";
-import { runPendingMigrations } from "./config/runMigrations.js";
-import { storeMiddleware } from "./middleware/storeMiddleware.js";
-import logger from "./config/logger.js";
-import { apiLimiter } from "./middleware/rateLimiterMiddleware.js";
-import { sanitizeMiddleware } from "./helpers/sanitizeHelper.js";
-import { errorHandler, notFoundHandler } from "./middleware/errorMiddleware.js";
-
+const express = require("express");
+const cors = require("cors");
+const helmet = require("helmet");
+const dotenv = require("dotenv");
+const path = require("path");
+const cookieParser = require("cookie-parser");
+const { testConnection } = require("./config/db");
+const { runPendingMigrations } = require("./config/runMigrations");
+const { storeMiddleware } = require("./middleware/storeMiddleware");
+const logger = require("./config/logger");
+const { apiLimiter } = require("./middleware/rateLimiterMiddleware");
+const { sanitizeMiddleware } = require("./helpers/sanitizeHelper");
+const { errorHandler, notFoundHandler } = require("./middleware/errorMiddleware");
 // Import Routes
-import authRoutes from "./routes/authRoutes.js";
-import dashboardRoutes from "./routes/dashboardRoutes.js";
-import categoryRoutes from "./routes/categoryRoutes.js";
-import productRoutes from "./routes/productRoutes.js";
-import orderRoutes from "./routes/orderRoutes.js";
-import customerRoutes from "./routes/customerRoutes.js";
-import couponRoutes from "./routes/couponRoutes.js";
-import offerRoutes from "./routes/offerRoutes.js";
-import bannerRoutes from "./routes/bannerRoutes.js";
-import bannerVideoRoutes from "./routes/bannerVideoRoutes.js";
-import collectionRoutes from "./routes/collectionRoutes.js";
-import settingRoutes from "./routes/settingRoutes.js";
-import contentRoutes from "./routes/contentRoutes.js";
-import reportRoutes from "./routes/reportRoutes.js";
-import notificationRoutes from "./routes/notificationRoutes.js";
-import mediaRoutes from "./routes/mediaRoutes.js";
-import adminRoutes from "./routes/adminRoutes.js";
-import storeRoutes from "./routes/storeRoutes.js";
-import cartRoutes from "./routes/cartRoutes.js";
-import wishlistRoutes from "./routes/wishlistRoutes.js";
-import storefrontAuthRoutes from "./routes/storefrontAuthRoutes.js";
-import storefrontOrderRoutes from "./routes/storefrontOrderRoutes.js";
-import storefrontPaymentRoutes from "./routes/storefrontPaymentRoutes.js";
-import webhookRoutes from "./routes/webhookRoutes.js";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
+const authRoutes = require("./routes/authRoutes");
+const dashboardRoutes = require("./routes/dashboardRoutes");
+const categoryRoutes = require("./routes/categoryRoutes");
+const productRoutes = require("./routes/productRoutes");
+const orderRoutes = require("./routes/orderRoutes");
+const customerRoutes = require("./routes/customerRoutes");
+const couponRoutes = require("./routes/couponRoutes");
+const offerRoutes = require("./routes/offerRoutes");
+const bannerRoutes = require("./routes/bannerRoutes");
+const bannerVideoRoutes = require("./routes/bannerVideoRoutes");
+const collectionRoutes = require("./routes/collectionRoutes");
+const settingRoutes = require("./routes/settingRoutes");
+const contentRoutes = require("./routes/contentRoutes");
+const reportRoutes = require("./routes/reportRoutes");
+const notificationRoutes = require("./routes/notificationRoutes");
+const mediaRoutes = require("./routes/mediaRoutes");
+const adminRoutes = require("./routes/adminRoutes");
+const storeRoutes = require("./routes/storeRoutes");
+const cartRoutes = require("./routes/cartRoutes");
+const wishlistRoutes = require("./routes/wishlistRoutes");
+const storefrontAuthRoutes = require("./routes/storefrontAuthRoutes");
+const storefrontOrderRoutes = require("./routes/storefrontOrderRoutes");
+const storefrontPaymentRoutes = require("./routes/storefrontPaymentRoutes");
+const webhookRoutes = require("./routes/webhookRoutes");
 dotenv.config();
 
 console.log("SERVER FILE LOADED");
+
+
 
 const app = express();
 const PORT = parseInt(process.env.PORT, 10) || 5000;
@@ -86,6 +83,7 @@ app.use(cors({
 }));
 
 // Body Parsers
+app.use(cookieParser());
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
@@ -215,4 +213,4 @@ if (process.env.NODE_ENV !== "test") {
   startServer();
 }
 
-export default app;
+module.exports = app;

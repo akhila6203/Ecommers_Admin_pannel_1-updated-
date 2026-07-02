@@ -194,17 +194,21 @@ export default function Customers() {
             searchPlaceholder="Search by name or email..."
             searchKeys={["first_name", "last_name", "email", "phone"]}
             itemLabel="customers"
-            paginate={false}
+            paginate={true}
+            paginate={true}
+            page={page}
+            setPage={setPage}
+            pagination={pagination}
           />
         )}
 
-        {pagination && pagination.totalPages > 1 && (
+        {/* {pagination && pagination.totalPages > 1 && (
           <div className="flex justify-center gap-2">
             <Button variant="outline" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Previous</Button>
             <span className="text-sm text-muted-foreground self-center">Page {pagination.page} of {pagination.totalPages}</span>
             <Button variant="outline" disabled={page >= pagination.totalPages} onClick={() => setPage((p) => p + 1)}>Next</Button>
           </div>
-        )}
+        )} */}
 
         {detailId && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">

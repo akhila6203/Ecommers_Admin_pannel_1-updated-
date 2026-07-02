@@ -1,12 +1,11 @@
-import { query } from "../config/db.js";
-import { successResponse } from "../helpers/responseHelper.js";
-import {
+const { query } = require("../config/db");
+const { successResponse } = require("../helpers/responseHelper");
+const {
   applyShiprocketStatusToOrder,
   findOrderByTrackingReference,
   mapShiprocketStatus,
-} from "../helpers/shiprocketHelper.js";
-import logger from "../config/logger.js";
-
+} = require("../helpers/shiprocketHelper");
+const logger = require("../config/logger");
 const extractWebhookReference = (body = {}) =>
   body.awb ||
   body.awb_code ||
@@ -29,7 +28,7 @@ const extractWebhookStatus = (body = {}) =>
   body.scans?.[0]?.status ||
   null;
 
-export const handleShiprocketWebhook = async (req, res) => {
+const handleShiprocketWebhook = async (req, res) => {
   try {
     const body = req.body || {};
     const reference = extractWebhookReference(body);
@@ -103,3 +102,5 @@ export const handleShiprocketWebhook = async (req, res) => {
     return successResponse(res, { processed: false, reason: "internal_error" }, "Webhook received");
   }
 };
+
+module.exports.handleShiprocketWebhook = handleShiprocketWebhook;

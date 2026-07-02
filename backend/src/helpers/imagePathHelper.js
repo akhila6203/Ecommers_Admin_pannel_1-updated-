@@ -2,7 +2,7 @@
  * Normalize stored image paths for API responses.
  * Legacy seed data may store bare filenames without uploads/ prefix.
  */
-export function normalizeUploadPath(path, folder = "banners") {
+function normalizeUploadPath(path, folder = "banners") {
   if (!path) return path;
   if (path.startsWith("http://") || path.startsWith("https://")) return path;
   const cleaned = path.replace(/^\/+/, "");
@@ -10,7 +10,10 @@ export function normalizeUploadPath(path, folder = "banners") {
   return `uploads/${folder}/${cleaned}`;
 }
 
-export function normalizeBannerImage(banner) {
+function normalizeBannerImage(banner) {
   if (!banner) return banner;
   return { ...banner, image: normalizeUploadPath(banner.image, "banners") };
 }
+
+module.exports.normalizeUploadPath = normalizeUploadPath;
+module.exports.normalizeBannerImage = normalizeBannerImage;

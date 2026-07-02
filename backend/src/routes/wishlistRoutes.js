@@ -1,13 +1,12 @@
-import express from "express";
-import {
+const express = require("express");
+const {
   getWishlist,
   addToWishlist,
   removeFromWishlist,
   toggleWishlist,
   checkWishlist,
-} from "../controllers/wishlistController.js";
-import { authenticateCustomer } from "../middleware/customerAuthMiddleware.js";
-
+} = require("../controllers/wishlistController");
+const { authenticateCustomer } = require("../middleware/customerAuthMiddleware");
 const router = express.Router();
 
 router.use(authenticateCustomer);
@@ -18,4 +17,4 @@ router.post("/toggle", toggleWishlist);
 router.get("/check/:productId", checkWishlist);
 router.delete("/:productId", removeFromWishlist);
 
-export default router;
+module.exports = router;

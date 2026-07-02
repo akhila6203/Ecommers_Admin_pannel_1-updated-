@@ -1,5 +1,5 @@
-import { query } from "../config/db.js";
-import {
+const { query } = require("../config/db");
+const {
   generateOtpCode,
   hashOtp,
   compareOtp,
@@ -7,18 +7,17 @@ import {
   normalizeIndianPhone,
   createPhoneVerificationToken,
   verifyPhoneVerificationToken,
-} from "../helpers/otpHelper.js";
-import { sendWhatsAppOtp } from "../helpers/whatsappHelper.js";
-import logger from "../config/logger.js";
-
+} = require("../helpers/otpHelper");
+const { sendWhatsAppOtp } = require("../helpers/whatsappHelper");
+const logger = require("../config/logger");
 const OTP_EXPIRY_MINUTES = 5;
 const MAX_OTP_ATTEMPTS = 5;
 const OTP_RESEND_COOLDOWN_SECONDS = 60;
-const OTP_HOURLY_LIMIT = 5;
+const OTP_HOURLY_LIMIT = 100;
 
 const VALID_PURPOSES = new Set(["register", "forgot_password"]);
 
-export const assertValidPurpose = (purpose) => {
+const assertValidPurpose = (purpose) => {
   if (!VALID_PURPOSES.has(purpose)) {
     throw Object.assign(new Error("Invalid OTP purpose"), { statusCode: 400 });
   }
@@ -70,7 +69,7 @@ const checkRateLimit = async (storeId, phone) => {
   }
 };
 
-export const createAndSendOtp = async ({ storeId, phone, email = null, purpose }) => {
+const createAndSendOtp = async ({ storeId, phone, email = null, purpose }) => {
   assertValidPurpose(purpose);
   await checkRateLimit(storeId, phone);
 
@@ -111,7 +110,7 @@ const getLatestActiveOtp = async (storeId, phone, purpose) => {
   return rows[0] || null;
 };
 
-export const verifyOtpCode = async ({ storeId, phone, otp, purpose }) => {
+const verifyOtpCode = async ({ storeId, phone, otp, purpose }) => {
   assertValidPurpose(purpose);
 
   const record = await getLatestActiveOtp(storeId, phone, purpose);
@@ -155,7 +154,7 @@ export const verifyOtpCode = async ({ storeId, phone, otp, purpose }) => {
   return { verificationToken };
 };
 
-export const assertRegisterPhoneVerified = ({ storeId, phone, verificationToken }) => {
+const assertRegisterPhoneVerified = ({ storeId, phone, verificationToken }) => {
   verifyPhoneVerificationToken(verificationToken, {
     storeId,
     phone: normalizeIndianPhone(phone),
@@ -163,4 +162,9 @@ export const assertRegisterPhoneVerified = ({ storeId, phone, verificationToken 
   });
 };
 
-export { normalizeIndianPhone, OTP_EXPIRY_MINUTES, MAX_OTP_ATTEMPTS };
+module.exports = { normalizeIndianPhone, OTP_EXPIRY_MINUTES, MAX_OTP_ATTEMPTS };
+
+module.exports.assertValidPurpose = assertValidPurpose;
+module.exports.createAndSendOtp = createAndSendOtp;
+module.exports.verifyOtpCode = verifyOtpCode;
+module.exports.assertRegisterPhoneVerified = assertRegisterPhoneVerified;

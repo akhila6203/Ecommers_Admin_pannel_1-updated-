@@ -1,11 +1,10 @@
-import { query, getConnection } from "../config/db.js";
-import { generateOrderNumber } from "../helpers/generateHelper.js";
-import { successResponse, errorResponse, paginatedResponse } from "../helpers/responseHelper.js";
-import { getStoreId } from "../helpers/storeHelper.js";
-import { cartWhereClause, resolveCartScope } from "../helpers/cartHelper.js";
-import { recordCouponUsage } from "./couponController.js";
-import logger from "../config/logger.js";
-
+const { query, getConnection } = require("../config/db");
+const { generateOrderNumber } = require("../helpers/generateHelper");
+const { successResponse, errorResponse, paginatedResponse } = require("../helpers/responseHelper");
+const { getStoreId } = require("../helpers/storeHelper");
+const { cartWhereClause, resolveCartScope } = require("../helpers/cartHelper");
+const { recordCouponUsage } = require("./couponController");
+const logger = require("../config/logger");
 const calculateDiscount = (coupon, orderAmount) => {
   const amount = parseFloat(orderAmount) || 0;
   if (amount <= 0) return 0;
@@ -52,7 +51,7 @@ const fetchCartItemsForCheckout = async (scope) => {
   );
 };
 
-export const checkout = async (req, res) => {
+const checkout = async (req, res) => {
   const connection = await getConnection();
   try {
     const storeId = getStoreId(req);
@@ -378,7 +377,7 @@ export const checkout = async (req, res) => {
   }
 };
 
-export const getMyOrders = async (req, res) => {
+const getMyOrders = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const customerId = req.customer.id;
@@ -430,7 +429,7 @@ export const getMyOrders = async (req, res) => {
   }
 };
 
-export const getMyOrder = async (req, res) => {
+const getMyOrder = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const customerId = req.customer.id;
@@ -457,3 +456,7 @@ export const getMyOrder = async (req, res) => {
     return errorResponse(res, "Failed to fetch order", 500);
   }
 };
+
+module.exports.checkout = checkout;
+module.exports.getMyOrders = getMyOrders;
+module.exports.getMyOrder = getMyOrder;
