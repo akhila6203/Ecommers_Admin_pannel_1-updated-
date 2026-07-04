@@ -335,6 +335,12 @@ if (sessionId) {
 
     const { token, refreshToken } = await issueTokens(customer);
 
+    res.cookie("customer_token", token, {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+});
     return successResponse(res, {
       customer: buildCustomerPayload(customer),
       token,
@@ -354,6 +360,12 @@ const logout = async (req, res) => {
         [req.customer.id]
       );
     }
+
+    res.clearCookie("customer_token", {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+});
     return successResponse(res, null, "Logged out successfully");
   } catch (error) {
     logger.error("Customer logout error:", error);
