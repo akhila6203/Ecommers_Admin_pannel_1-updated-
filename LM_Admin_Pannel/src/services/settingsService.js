@@ -48,3 +48,24 @@ export const updateContentPage = (pageKey, data) => api.put(`/content/${pageKey}
 
 export const testEmailSettings = (data) => api.post("/settings/test-email", data);
 export const testShiprocketConnection = (data) => api.post("/settings/test-shiprocket", data);
+
+
+// export const getShippingSettings = () => api.get("/settings/shipping");
+
+// export const updateShippingSettings = (data) =>
+//   api.put("/settings/shipping", data);
+
+const normalizeSettingsGroup = (res) => {
+  const data = res.data?.data || res.data || {};
+  const flat = {};
+  Object.entries(data).forEach(([key, val]) => {
+    flat[key] = val?.value !== undefined ? val.value : val;
+  });
+  return flat;
+};
+export const getShippingSettings = async () => {
+  const res = await api.get("/settings/shipping");
+  return normalizeSettingsGroup(res);
+};
+export const updateShippingSettings = (data) =>
+  api.put("/settings/shipping", data);

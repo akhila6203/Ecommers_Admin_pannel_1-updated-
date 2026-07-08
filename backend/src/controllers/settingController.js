@@ -136,14 +136,48 @@ const updateSettingsByGroup = async (req, res) => {
 
 // @desc    Get store information (public)
 // @route   GET /api/settings/public
+// const getPublicSettings = async (req, res) => {
+//   try {
+//     const storeId = getStoreId(req);
+//     const general = await query("SELECT key_name, value FROM settings WHERE store_id = ? AND group_name IN ('general', 'seo', 'social')", [storeId]);
+//     const result = {};
+//     for (const s of general) {
+//       result[s.key_name] = s.value;
+//     }
+//     return successResponse(res, result);
+//   } catch (error) {
+//     logger.error("Get public settings error:", error);
+//     return errorResponse(res, "Failed to fetch store information", 500);
+//   }
+// };
 const getPublicSettings = async (req, res) => {
   try {
     const storeId = getStoreId(req);
-    const general = await query("SELECT key_name, value FROM settings WHERE store_id = ? AND group_name IN ('general', 'seo', 'social')", [storeId]);
+
+    const rows = await query(
+      `SELECT group_name, key_name, value, type
+       FROM settings
+       WHERE store_id = ?
+       AND group_name IN ('general', 'seo', 'social', 'shipping')`,
+      [storeId]
+    );
+
     const result = {};
-    for (const s of general) {
-      result[s.key_name] = s.value;
+
+    for (const s of rows) {
+      let value = s.value;
+
+      if (s.type === "boolean") value = value === "true" || value === "1";
+      else if (s.type === "number") value = Number(value);
+
+      if (s.group_name === "shipping") {
+        if (!result.shipping) result.shipping = {};
+        result.shipping[s.key_name] = value;
+      } else {
+        result[s.key_name] = value;
+      }
     }
+
     return successResponse(res, result);
   } catch (error) {
     logger.error("Get public settings error:", error);

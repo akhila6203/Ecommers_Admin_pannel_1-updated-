@@ -45,7 +45,7 @@ const navGroups = [
     items: [
       { label: "Orders", icon: ShoppingCart, path: "/orders" },
       { label: "Customers", icon: Users, path: "/customers" },
-      // { label: "Offers / Coupons", icon: Tag, path: "/offers" },
+      { label: "Offers / Coupons", icon: Tag, path: "/offers" },
       { label: "Banners", icon: Image, path: "/gallery" },
       { label: "Pages", icon: FileText, path: "/conditions" },
     ],

@@ -13,6 +13,8 @@ import {
   updateIntegrationSettings,
   testEmailSettings,
   testShiprocketConnection,
+  getShippingSettings,
+updateShippingSettings,
 } from "@/services/settingsService";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -33,6 +35,7 @@ const TAB_FROM_PARAM = {
   "store-information": "store-information",
   "store-profile": "store-information",
   "integrations": "integrations",
+  shipping: "shipping",
 };
 
 function resolveTabFromParams(searchParams) {
@@ -43,9 +46,20 @@ function resolveTabFromParams(searchParams) {
 const TABS = [
   { id: "store-information", label: "Store Information" },
   { id: "integrations", label: "Integrations" },
+  { id: "shipping", label: "Shipping" },
 ];
 
 const GST_TYPES = ["Regular", "Composition", "Unregistered", "SEZ", "Export"];
+
+
+const EMPTY_SHIPPING = {
+  shipping_enabled: true,
+  shipping_charge: "50",
+  free_shipping_enabled: true,
+  free_shipping_above: "999",
+  shipping_label: "Standard Delivery",
+  estimated_delivery_days: "5-7 Days",
+};
 
 const EMPTY_STORE = {
   companyName: "",
@@ -180,6 +194,8 @@ export default function StoreSettings() {
   const [testingShiprocket, setTestingShiprocket] = useState(false);
   const [testingEmail, setTestingEmail] = useState(false);
 
+  const [shipping, setShipping] = useState(EMPTY_SHIPPING);
+
   const markDirty = useCallback((tab) => {
     setDirtyTabs((prev) => ({ ...prev, [tab]: true }));
   }, []);
@@ -213,8 +229,17 @@ export default function StoreSettings() {
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [dirtyTabs]);
 
+
+
+
   const adminUser = JSON.parse(localStorage.getItem("lm_admin_user") || "{}");
     const currentStoreId = adminUser?.store_id || "super_admin";
+
+    const shippingQuery = useQuery({
+  queryKey: ["settings", "shipping", currentStoreId],
+  queryFn: getShippingSettings,
+  enabled: visitedTabs.has("shipping"),
+});
 
     const storeQuery = useQuery({
       queryKey: ["settings", "store-information", currentStoreId],
@@ -226,6 +251,12 @@ export default function StoreSettings() {
   //   queryFn: getStoreInformation,
   //   enabled: visitedTabs.has("store-information"),
   // });
+
+   useEffect(() => {
+    if (shippingQuery.data && !dirtyTabs["shipping"]) {
+      setShipping({ ...EMPTY_SHIPPING, ...shippingQuery.data });
+    }
+  }, [shippingQuery.data, dirtyTabs["shipping"]]);
 
   const integrationsQuery = useQuery({
     queryKey: ["settings", "integrations"],
@@ -289,6 +320,20 @@ export default function StoreSettings() {
     onError: (err) => toast.error(err.response?.data?.message || "Failed to save integrations"),
   });
 
+  const shippingMutation = useMutation({
+  mutationFn: updateShippingSettings,
+  onSuccess: () => {
+    markClean("shipping");
+    queryClient.invalidateQueries({
+  queryKey: ["settings", "shipping", currentStoreId],
+});
+    // queryClient.invalidateQueries({ queryKey: ["settings", "shipping"] });
+    toast.success("Shipping settings saved successfully!");
+  },
+  onError: (err) =>
+    toast.error(err.response?.data?.message || "Failed to save shipping settings"),
+});
+
   const updateStoreField = (field, value) => {
     setStoreInfo((prev) => ({ ...prev, [field]: value }));
     markDirty("store-information");
@@ -298,6 +343,11 @@ export default function StoreSettings() {
     setIntegrations((prev) => ({ ...prev, [field]: value }));
     markDirty("integrations");
   };
+
+  const updateShippingField = (field, value) => {
+  setShipping((prev) => ({ ...prev, [field]: value }));
+  markDirty("shipping");
+};
 
   const handleLogoUpload = async (file) => {
     setLogoUploading(true);
@@ -363,6 +413,7 @@ export default function StoreSettings() {
     e.preventDefault();
     integrationsMutation.mutate(integrations);
   };
+
 
   const tabLoading = {
     "store-information": storeQuery.isLoading,
@@ -970,6 +1021,104 @@ export default function StoreSettings() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="shipping" className="mt-6">
+  <Card>
+    <CardHeader>
+      <CardTitle>Shipping Settings</CardTitle>
+      <CardDescription>
+        Manage delivery charges and free shipping rules.
+      </CardDescription>
+    </CardHeader>
+
+    <CardContent>
+      {shippingQuery.isLoading ? (
+        <div className="flex justify-center py-12">
+          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <form
+          className="space-y-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            shippingMutation.mutate(shipping);
+          }}
+        >
+          <div className="flex items-center justify-between rounded-lg border p-4">
+            <div>
+              <Label>Enable Shipping</Label>
+              <p className="text-xs text-muted-foreground">
+                Turn on delivery charges for this store.
+              </p>
+            </div>
+            <Switch
+              checked={shipping.shipping_enabled === true || shipping.shipping_enabled === "true"}
+              onCheckedChange={(val) => updateShippingField("shipping_enabled", val)}
+            />
+          </div>
+
+          <Field label="Shipping Charge">
+            <Input
+              type="number"
+              min="0"
+              value={shipping.shipping_charge}
+              onChange={(e) => updateShippingField("shipping_charge", e.target.value)}
+              placeholder="50"
+            />
+          </Field>
+
+          <div className="flex items-center justify-between rounded-lg border p-4">
+            <div>
+              <Label>Enable Free Shipping</Label>
+              <p className="text-xs text-muted-foreground">
+                Example: orders above ₹999 get free shipping.
+              </p>
+            </div>
+            <Switch
+              checked={shipping.free_shipping_enabled === true || shipping.free_shipping_enabled === "true"}
+              onCheckedChange={(val) => updateShippingField("free_shipping_enabled", val)}
+            />
+          </div>
+
+          <Field label="Free Shipping Above">
+            <Input
+              type="number"
+              min="0"
+              value={shipping.free_shipping_above}
+              onChange={(e) => updateShippingField("free_shipping_above", e.target.value)}
+              placeholder="999"
+            />
+          </Field>
+
+          <Field label="Shipping Label">
+            <Input
+              value={shipping.shipping_label}
+              onChange={(e) => updateShippingField("shipping_label", e.target.value)}
+              placeholder="Standard Delivery"
+            />
+          </Field>
+
+          <Field label="Estimated Delivery Days">
+            <Input
+              value={shipping.estimated_delivery_days}
+              onChange={(e) => updateShippingField("estimated_delivery_days", e.target.value)}
+              placeholder="5-7 Days"
+            />
+          </Field>
+
+          <Button type="submit" disabled={shippingMutation.isPending}>
+            {shippingMutation.isPending ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Save className="w-4 h-4 mr-2" />
+            )}
+            Save Shipping Settings
+          </Button>
+        </form>
+      )}
+    </CardContent>
+  </Card>
+</TabsContent>
       </Tabs>
     </div>
   );

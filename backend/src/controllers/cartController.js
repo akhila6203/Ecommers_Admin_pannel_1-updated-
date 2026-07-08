@@ -78,7 +78,8 @@ const getCart = async (req, res) => {
         row.selected_size || itemData.selected_size || row.variant_size || "Free Size";
       const selectedColor =
         row.selected_color || itemData.selected_color || row.variant_color || "";
-      const price = Number(row.offer_price || row.price || row.item_price || 0);
+        const price = Number(row.item_price || row.offer_price || row.price || 0);
+      // const price = Number(row.offer_price || row.price || row.item_price || 0);
       const image = itemData.image || row.thumbnail || "";
 
       return {
@@ -217,19 +218,59 @@ const addToCart = async (req, res) => {
   }
 };
 
+// 
+
 const updateCartItem = async (req, res) => {
   try {
     const ctx = requireCartScope(req, res);
     if (!ctx) return;
 
-    const { where } = ctx;
+    const { where, scope } = ctx;
+    const { storeId } = scope;
     const cartId = req.params.id;
 
     if (!cartId) {
       return errorResponse(res, "Cart item id required", 400);
     }
 
-    const { quantity, selected_size, selected_color } = req.body;
+    const { quantity, selected_size, selected_color, variant_id, item_price } = req.body;
+
+    let finalVariantId = variant_id;
+    let finalItemPrice = item_price;
+    let finalSelectedColor = selected_color;
+
+    if (selected_size !== undefined) {
+      const cartRows = await query(
+        `SELECT product_id, selected_color
+         FROM cart
+         WHERE id = ? AND ${where.clause}
+         LIMIT 1`,
+        [cartId, ...where.params]
+      );
+
+      if (cartRows.length) {
+        const productId = cartRows[0].product_id;
+        const colorToUse = selected_color || cartRows[0].selected_color || "";
+
+        const variantRows = await query(
+          `SELECT id, color, size, price, offer_price
+           FROM product_variants
+           WHERE product_id = ?
+             AND store_id = ?
+             AND size = ?
+             AND (? = '' OR color = ?)
+           LIMIT 1`,
+          [productId, storeId, selected_size, colorToUse, colorToUse]
+        );
+
+        if (variantRows.length) {
+          const v = variantRows[0];
+          finalVariantId = v.id;
+          finalSelectedColor = v.color || colorToUse;
+          finalItemPrice = Number(v.offer_price || v.price || 0);
+        }
+      }
+    }
 
     const fields = [];
     const values = [];
@@ -244,9 +285,19 @@ const updateCartItem = async (req, res) => {
       values.push(selected_size || null);
     }
 
-    if (selected_color !== undefined) {
+    if (finalSelectedColor !== undefined) {
       fields.push("selected_color = ?");
-      values.push(selected_color || null);
+      values.push(finalSelectedColor || null);
+    }
+
+    if (finalVariantId !== undefined) {
+      fields.push("variant_id = ?");
+      values.push(finalVariantId || null);
+    }
+
+    if (finalItemPrice !== undefined) {
+      fields.push("item_price = ?");
+      values.push(Number(finalItemPrice) || 0);
     }
 
     if (!fields.length) {
@@ -256,7 +307,7 @@ const updateCartItem = async (req, res) => {
     fields.push("updated_at = NOW()");
 
     const result = await query(
-      `UPDATE cart 
+      `UPDATE cart
        SET ${fields.join(", ")}
        WHERE id = ? AND ${where.clause}`,
       [...values, cartId, ...where.params]
