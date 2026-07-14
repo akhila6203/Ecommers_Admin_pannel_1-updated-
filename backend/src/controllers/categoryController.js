@@ -72,11 +72,11 @@ const getCategories = async (req, res) => {
         (SELECT COUNT(*) FROM sub_categories WHERE main_category_id = c.id AND store_id = ?) as sub_category_count,
         (SELECT COUNT(*) FROM products WHERE category_id = c.id AND store_id = ?) as product_count
        FROM categories c ${whereClause}
-       ORDER BY c.name ASC
+       ORDER BY c.created_at ASC, c.id ASC
        LIMIT ? OFFSET ?`,
       [storeId, storeId, ...params, String(limit), String(offset)]
     );
-
+// ORDER BY c.name ASC
     return paginatedResponse(res, categories.map(normalizeCategoryRow), total, page, limit);
   } catch (error) {
     logger.error("Get categories error:", error);
@@ -88,9 +88,15 @@ const getAllCategories = async (req, res) => {
   try {
     const storeId = getStoreId(req);
     const categories = await query(
-      `SELECT id, name, slug FROM categories WHERE store_id = ? ORDER BY name ASC`,
+      `
+  SELECT id, name, slug
+  FROM categories
+  WHERE store_id = ?
+  ORDER BY created_at ASC, id ASC
+`,
       [storeId]
     );
+    // `SELECT id, name, slug FROM categories WHERE store_id = ? ORDER BY name ASC`
     return successResponse(res, categories);
   } catch (error) {
     logger.error("Get all categories error:", error);
@@ -106,10 +112,20 @@ const getCategory = async (req, res) => {
       return errorResponse(res, "Category not found", 404);
     }
 
+    // const subCategories = await query(
+    //   `SELECT ${SUB_COLUMNS} FROM sub_categories WHERE main_category_id = ? AND store_id = ? ORDER BY name ASC`,
+    //   [req.params.id, storeId]
+    // );
     const subCategories = await query(
-      `SELECT ${SUB_COLUMNS} FROM sub_categories WHERE main_category_id = ? AND store_id = ? ORDER BY name ASC`,
-      [req.params.id, storeId]
-    );
+  `
+    SELECT ${SUB_COLUMNS}
+    FROM sub_categories
+    WHERE main_category_id = ?
+      AND store_id = ?
+    ORDER BY created_at ASC, id ASC
+  `,
+  [req.params.id, storeId]
+);
 
     return successResponse(res, {
       ...normalizeCategoryRow(categories[0]),
@@ -219,11 +235,11 @@ const getSubCategories = async (req, res) => {
        FROM sub_categories sc
        LEFT JOIN categories c ON sc.main_category_id = c.id AND c.store_id = sc.store_id
        ${whereClause}
-       ORDER BY sc.name ASC
+       ORDER BY sc.created_at ASC, sc.id ASC
        LIMIT ? OFFSET ?`,
       [storeId, ...params, String(limit), String(offset)]
     );
-
+// ORDER BY sc.name ASC
     return paginatedResponse(res, subCategories.map(normalizeCategoryRow), total, page, limit);
   } catch (error) {
     logger.error("Get sub categories error:", error);
@@ -326,11 +342,11 @@ const getChildCategories = async (req, res) => {
        LEFT JOIN sub_categories sc ON cc.sub_category_id = sc.id AND sc.store_id = cc.store_id
        LEFT JOIN categories c ON sc.main_category_id = c.id AND c.store_id = cc.store_id
        ${whereClause}
-       ORDER BY cc.name ASC
+      ORDER BY cc.created_at ASC, cc.id ASC
        LIMIT ? OFFSET ?`,
       [...params, String(limit), String(offset)]
     );
-
+//  ORDER BY cc.name ASC
     return paginatedResponse(res, childCategories.map(normalizeCategoryRow), total, page, limit);
   } catch (error) {
     logger.error("Get child categories error:", error);
@@ -411,33 +427,123 @@ const deleteChildCategory = async (req, res) => {
 const getCategoryHierarchy = async (req, res) => {
   try {
     const storeId = getStoreId(req);
+
+    /*
+      created_at ASC:
+      Admin lo first create chesina category first vastundi.
+
+      id ASC:
+      created_at same unte stable order maintain chestundi.
+    */
     const categories = await query(
-      "SELECT id, name, slug, image, image_url FROM categories WHERE store_id = ? ORDER BY name ASC",
+      `
+        SELECT
+          id,
+          name,
+          slug,
+          image,
+          image_url,
+          created_at
+        FROM categories
+        WHERE store_id = ?
+        ORDER BY created_at ASC, id ASC
+      `,
       [storeId]
     );
 
     for (const cat of categories) {
-      normalizeCategoryRow(cat);
+      const normalizedCategory = normalizeCategoryRow(cat);
+
+      cat.image = normalizedCategory.image;
+      cat.image_url = normalizedCategory.image_url;
+
       cat.sub_categories = await query(
-        "SELECT id, name, slug, main_category_id, image, image_url FROM sub_categories WHERE main_category_id = ? AND store_id = ? ORDER BY name ASC",
+        `
+          SELECT
+            id,
+            name,
+            slug,
+            main_category_id,
+            image,
+            image_url,
+            created_at
+          FROM sub_categories
+          WHERE main_category_id = ?
+            AND store_id = ?
+          ORDER BY created_at ASC, id ASC
+        `,
         [cat.id, storeId]
       );
+
       cat.sub_categories = cat.sub_categories.map(normalizeCategoryRow);
+
       for (const sub of cat.sub_categories) {
         sub.child_categories = await query(
-          "SELECT id, name, slug, sub_category_id, image, image_url FROM child_categories WHERE sub_category_id = ? AND store_id = ? ORDER BY name ASC",
+          `
+            SELECT
+              id,
+              name,
+              slug,
+              sub_category_id,
+              image,
+              image_url,
+              created_at
+            FROM child_categories
+            WHERE sub_category_id = ?
+              AND store_id = ?
+            ORDER BY created_at ASC, id ASC
+          `,
           [sub.id, storeId]
         );
-        sub.child_categories = sub.child_categories.map(normalizeCategoryRow);
+
+        sub.child_categories =
+          sub.child_categories.map(normalizeCategoryRow);
       }
     }
 
     return successResponse(res, categories);
   } catch (error) {
     logger.error("Get category hierarchy error:", error);
-    return errorResponse(res, process.env.NODE_ENV === "development" ? error.message : "Failed to fetch hierarchy", 500);
+
+    return errorResponse(
+      res,
+      process.env.NODE_ENV === "development"
+        ? error.message
+        : "Failed to fetch hierarchy",
+      500
+    );
   }
 };
+// const getCategoryHierarchy = async (req, res) => {
+//   try {
+//     const storeId = getStoreId(req);
+//     const categories = await query(
+//       "SELECT id, name, slug, image, image_url FROM categories WHERE store_id = ? ORDER BY name ASC",
+//       [storeId]
+//     );
+
+//     for (const cat of categories) {
+//       normalizeCategoryRow(cat);
+//       cat.sub_categories = await query(
+//         "SELECT id, name, slug, main_category_id, image, image_url FROM sub_categories WHERE main_category_id = ? AND store_id = ? ORDER BY name ASC",
+//         [cat.id, storeId]
+//       );
+//       cat.sub_categories = cat.sub_categories.map(normalizeCategoryRow);
+//       for (const sub of cat.sub_categories) {
+//         sub.child_categories = await query(
+//           "SELECT id, name, slug, sub_category_id, image, image_url FROM child_categories WHERE sub_category_id = ? AND store_id = ? ORDER BY name ASC",
+//           [sub.id, storeId]
+//         );
+//         sub.child_categories = sub.child_categories.map(normalizeCategoryRow);
+//       }
+//     }
+
+//     return successResponse(res, categories);
+//   } catch (error) {
+//     logger.error("Get category hierarchy error:", error);
+//     return errorResponse(res, process.env.NODE_ENV === "development" ? error.message : "Failed to fetch hierarchy", 500);
+//   }
+// };
 
 module.exports.getCategories = getCategories;
 module.exports.getAllCategories = getAllCategories;
