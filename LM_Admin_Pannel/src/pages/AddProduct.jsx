@@ -526,9 +526,26 @@ export default function AddProduct() {
     }
   };
 
+  // const handleSwitchChange = (name) => (checked) => {
+  //   setForm((f) => ({ ...f, [name]: checked }));
+  // };
   const handleSwitchChange = (name) => (checked) => {
-    setForm((f) => ({ ...f, [name]: checked }));
-  };
+  setForm((f) => {
+    const updated = {
+      ...f,
+      [name]: checked,
+    };
+
+    if (
+      name === "charge_tax" &&
+      !checked
+    ) {
+      updated.gst_percent = "";
+    }
+
+    return updated;
+  });
+};
 
   const handleSeoChange = (e) => {
     const { name, value } = e.target;
@@ -652,7 +669,15 @@ export default function AddProduct() {
         payload.append("discount_percentage", "0");
       }
 
-      payload.append("gst_percent", form.charge_tax ? form.gst_percent || "0" : "0");
+      payload.append(
+  "gst_percent",
+  form.charge_tax
+    ? String(
+        Number(form.gst_percent || 0)
+      )
+    : "0"
+);
+      // payload.append("gst_percent", form.charge_tax ? form.gst_percent || "0" : "0");
       payload.append("short_description", form.short_description || "");
       payload.append("long_description", form.long_description || "");
       payload.append("tags", form.tags || "");
@@ -766,6 +791,19 @@ export default function AddProduct() {
     if (!form.name?.trim()) missing.push("Product Title");
     if (!form.category_id) missing.push("Category");
     if (!form.price) missing.push("Price");
+
+    if (
+  form.charge_tax &&
+  (
+    form.gst_percent === "" ||
+    Number(form.gst_percent) <= 0 ||
+    Number(form.gst_percent) > 100
+  )
+) {
+  missing.push(
+    "Valid GST Rate between 0 and 100"
+  );
+}
 
     if (missing.length > 0) {
       setActiveTab("info");
@@ -1078,12 +1116,39 @@ export default function AddProduct() {
                       <Switch checked={form.charge_tax} onCheckedChange={handleSwitchChange("charge_tax")} id="charge_tax" />
                       <Label htmlFor="charge_tax" className="text-sm font-medium cursor-pointer">Charge Tax</Label>
                     </div>
-                    {form.charge_tax && (
+                    {/* {form.charge_tax && (
                       <div className="mt-3 max-w-xs">
                         <Label htmlFor="gst_percent" className={labelClass}>GST Rate (%)</Label>
                         <Input id="gst_percent" name="gst_percent" type="number" value={form.gst_percent} onChange={handleChange} placeholder="12" />
                       </div>
-                    )}
+                    )} */}
+                    {form.charge_tax && (
+  <div className="mt-3 max-w-xs">
+    <Label
+      htmlFor="gst_percent"
+      className={labelClass}
+    >
+      GST Rate (%) *
+    </Label>
+
+    <Input
+      id="gst_percent"
+      name="gst_percent"
+      type="number"
+      min="0"
+      max="100"
+      step="0.01"
+      value={form.gst_percent}
+      onChange={handleChange}
+      placeholder="e.g. 5, 12, 18"
+      required={form.charge_tax}
+    />
+
+    <p className="text-xs text-muted-foreground mt-1">
+      Product selling price already includes this GST.
+    </p>
+  </div>
+)}
                   </div>
                 </CardContent>
               </Card>
