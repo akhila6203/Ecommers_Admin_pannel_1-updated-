@@ -36,6 +36,10 @@ const storefrontAuthRoutes = require("./routes/storefrontAuthRoutes");
 const storefrontOrderRoutes = require("./routes/storefrontOrderRoutes");
 const storefrontPaymentRoutes = require("./routes/storefrontPaymentRoutes");
 const webhookRoutes = require("./routes/webhookRoutes");
+const recentlyViewedRoutes = require(
+  "./routes/recentlyViewedRoutes"
+);
+
 dotenv.config();
 
 console.log("SERVER FILE LOADED");
@@ -126,6 +130,10 @@ app.use("/api/storefront/auth", storefrontAuthRoutes);
 app.use("/api/storefront/orders", storefrontOrderRoutes);
 app.use("/api/storefront/payments", storefrontPaymentRoutes);
 app.use("/api/webhooks", webhookRoutes);
+app.use(
+  "/api/storefront/recently-viewed",
+  recentlyViewedRoutes
+);
 
 // Health Check
 app.get("/api/health", (req, res) => {

@@ -25,14 +25,51 @@ const getDashboardStats = async (req, res) => {
         [storeId]
       ),
       query(
-        `SELECT p.id, p.name, p.thumbnail, p.price, p.total_sales, SUM(oi.quantity) as total_qty
-         FROM products p
-         JOIN order_items oi ON p.id = oi.product_id AND oi.store_id = p.store_id
-         JOIN orders o ON oi.order_id = o.id AND o.store_id = p.store_id
-         WHERE p.store_id = ? AND o.order_status = 'delivered'
-         GROUP BY p.id ORDER BY total_qty DESC LIMIT 10`,
-        [storeId]
-      ),
+  `SELECT
+      p.id,
+      p.name,
+      COALESCE(
+        NULLIF(p.thumbnail, ''),
+        (
+          SELECT pi.image
+          FROM product_images pi
+          WHERE pi.product_id = p.id
+            AND pi.store_id = p.store_id
+          ORDER BY
+            CASE
+              WHEN pi.image_type = 'thumbnail' THEN 0
+              ELSE 1
+            END,
+            pi.sort_order ASC,
+            pi.id ASC
+          LIMIT 1
+        )
+      ) AS thumbnail,
+      p.price,
+      p.offer_price,
+      p.total_sales,
+      COALESCE(SUM(oi.quantity), 0) AS total_qty
+   FROM products p
+   JOIN order_items oi
+     ON p.id = oi.product_id
+    AND oi.store_id = p.store_id
+   JOIN orders o
+     ON oi.order_id = o.id
+    AND o.store_id = p.store_id
+   WHERE p.store_id = ?
+     AND o.order_status = 'delivered'
+   GROUP BY
+      p.id,
+      p.name,
+      p.thumbnail,
+      p.price,
+      p.offer_price,
+      p.total_sales
+   ORDER BY total_qty DESC
+   LIMIT 10`,
+  [storeId]
+),
+     
       query(
         `SELECT DATE_FORMAT(created_at, '%Y-%m') as month, COALESCE(SUM(total_amount), 0) as revenue, COUNT(*) as orders_count
          FROM orders WHERE store_id = ? AND created_at >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH) AND order_status = 'delivered'
@@ -158,3 +195,6 @@ module.exports.getDashboardStats = getDashboardStats;
 module.exports.getRevenueAnalytics = getRevenueAnalytics;
 module.exports.getSalesAnalytics = getSalesAnalytics;
 module.exports.getOrderAnalytics = getOrderAnalytics;
+
+
+

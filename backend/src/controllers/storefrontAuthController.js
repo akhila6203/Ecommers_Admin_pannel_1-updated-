@@ -15,6 +15,95 @@ const {
   assertRegisterPhoneVerified,
 } = require("../services/customerOtpService");
 const logger = require("../config/logger");
+
+const mergeRecentlyViewedToCustomer = async ({
+  storeId,
+  sessionId,
+  customerId,
+}) => {
+  if (!storeId || !sessionId || !customerId) {
+    return;
+  }
+
+  /*
+   * Guest recently viewed rows ni customer account ki merge.
+   * Same product customer history lo already unte
+   * viewed_at latest time ki update avuthundi.
+   */
+  await query(
+    `
+      INSERT INTO recently_viewed_products (
+        store_id,
+        customer_id,
+        session_id,
+        product_id,
+        viewed_at
+      )
+      SELECT
+        store_id,
+        ?,
+        NULL,
+        product_id,
+        viewed_at
+      FROM recently_viewed_products
+      WHERE store_id = ?
+        AND session_id = ?
+
+      ON DUPLICATE KEY UPDATE
+        viewed_at = NOW(),
+        updated_at = NOW()
+    `,
+    [
+      customerId,
+      storeId,
+      sessionId,
+    ]
+  );
+
+  /*
+   * Merge complete ayyaka guest rows delete.
+   */
+  await query(
+    `
+      DELETE FROM recently_viewed_products
+      WHERE store_id = ?
+        AND session_id = ?
+    `,
+    [
+      storeId,
+      sessionId,
+    ]
+  );
+
+  /*
+   * Customer ki latest 30 products matrame maintain.
+   */
+  await query(
+    `
+      DELETE FROM recently_viewed_products
+      WHERE store_id = ?
+        AND customer_id = ?
+        AND id NOT IN (
+          SELECT id
+          FROM (
+            SELECT id
+            FROM recently_viewed_products
+            WHERE store_id = ?
+              AND customer_id = ?
+            ORDER BY viewed_at DESC, id DESC
+            LIMIT 30
+          ) AS latest_recent_rows
+        )
+    `,
+    [
+      storeId,
+      customerId,
+      storeId,
+      customerId,
+    ]
+  );
+};
+
 const customerFields =
   "id, store_id, first_name, last_name, email, phone, avatar, gender, date_of_birth, status, total_orders, total_spent, created_at, last_login_at";
 
@@ -314,17 +403,39 @@ const login = async (req, res) => {
       [customer.id, storeId]
     );
 
-    // const sessionId = getSessionId(req);
-    // if (sessionId) {
-    //   await mergeSessionCartToCustomer(storeId, sessionId, customer.id);
-    // }
-    const sessionId = getSessionId(req);
+
+const sessionId = getSessionId(req);
 
 if (sessionId) {
+  
   try {
-    await mergeSessionCartToCustomer(storeId, sessionId, customer.id);
+    await mergeSessionCartToCustomer(
+      storeId,
+      sessionId,
+      customer.id
+    );
   } catch (mergeError) {
-    logger.error("Cart merge after login failed:", mergeError);
+    logger.error(
+      "Cart merge after login failed:",
+      mergeError
+    );
+  }
+
+  /*
+   * Guest recently viewed history merge.
+   */
+  try {
+    await mergeRecentlyViewedToCustomer({
+      storeId,
+      sessionId,
+      customerId: customer.id,
+    });
+  } catch (recentMergeError) {
+    
+    logger.error(
+      "Recently viewed merge after login failed:",
+      recentMergeError
+    );
   }
 }
 
@@ -812,3 +923,6 @@ module.exports.deleteAddress = deleteAddress;
 module.exports.forgotPassword = forgotPassword;
 module.exports.resetPassword = resetPassword;
 module.exports.setDefaultAddress = setDefaultAddress;
+
+
+

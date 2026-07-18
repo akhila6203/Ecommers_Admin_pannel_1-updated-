@@ -14,9 +14,26 @@ const parseJsonField = (value) => {
   }
 };
 
-const parseStockValue = (val) => {
-  const n = Number.parseInt(String(val ?? "0").trim(), 10);
-  return Number.isNaN(n) || n < 0 ? 0 : n;
+// const parseStockValue = (val) => {
+//   const n = Number.parseInt(String(val ?? "0").trim(), 10);
+//   return Number.isNaN(n) || n < 0 ? 0 : n;
+// };
+const parseStockValue = (
+  val,
+  fallback = 0
+) => {
+  const n = Number.parseFloat(
+    String(
+      val ?? fallback
+    ).trim()
+  );
+  if (
+    !Number.isFinite(n) ||
+    n < 0
+  ) {
+    return fallback;
+  }
+  return Math.round(n * 100) / 100;
 };
 
 const parsePriceValue = (val, fallback = 0) => {
@@ -73,6 +90,83 @@ const deriveProductPricesFromVariants = (variantRows, fallbackPrice, fallbackOff
   );
 };
 
+
+const normalizeSaleMode = (
+  value
+) => {
+  const mode = String(
+    value || "piece"
+  )
+    .trim()
+    .toLowerCase();
+
+  return [
+    "piece",
+    "size",
+    "meter",
+  ].includes(mode)
+    ? mode
+    : "piece";
+};
+
+const normalizeProductUnitFields = (
+  body = {}
+) => {
+  const saleMode =
+    normalizeSaleMode(
+      body.sale_mode
+    );
+
+  const isMeter =
+    saleMode === "meter";
+
+  const defaultUnitName =
+    isMeter
+      ? "meter"
+      : "piece";
+
+  const requestedUnitName =
+    String(
+      body.unit_name ||
+        defaultUnitName
+    )
+      .trim()
+      .toLowerCase();
+
+  const unitName =
+    requestedUnitName ||
+    defaultUnitName;
+
+  const minimumQuantity =
+    isMeter
+      ? Math.max(
+          0.01,
+          parseStockValue(
+            body.minimum_quantity,
+            1
+          )
+        )
+      : 1;
+
+  const quantityStep =
+    isMeter
+      ? Math.max(
+          0.01,
+          parseStockValue(
+            body.quantity_step,
+            0.5
+          )
+        )
+      : 1;
+
+  return {
+    saleMode,
+    unitName,
+    minimumQuantity,
+    quantityStep,
+  };
+};
+
 const resolveStockStatus = (stockQty, threshold = 5) => {
   if (stockQty <= 0) return "out_of_stock";
   if (stockQty <= threshold) return "low_stock";
@@ -84,7 +178,7 @@ const syncProductInventory = async (conn, productId, stockQty, threshold = 5) =>
     "UPDATE inventory SET quantity = ?, available_quantity = ? WHERE product_id = ?",
     [stockQty, stockQty, productId]
   );
-  await conn.execute("UPDATE products SET stock = ?, stock_status = ? WHERE id = ?", [
+  await conn.execute("UPDATE products SET stock = ?, stock_status = ?  WHERE id = ?", [
     stockQty,
     resolveStockStatus(stockQty, threshold),
     productId,
@@ -111,13 +205,61 @@ const variantOptionsFromRow = (opts) => {
   return options.map((o) => ({ name: o.name, value: o.value }));
 };
 
-const resolveVariantDimensions = (opts) => {
-  const options = variantOptionsFromRow(opts);
-  const size = options.find((o) => o.name?.toLowerCase() === "size")?.value || options[0]?.value || null;
-  const color = options.find((o) => o.name?.toLowerCase() === "color")?.value || options[1]?.value || null;
-  const fabric = options.find((o) => o.name?.toLowerCase() === "fabric")?.value || null;
-  const optionValues = options.length ? JSON.stringify(options) : null;
-  return { size, color, fabric, optionValues };
+// const resolveVariantDimensions = (opts) => {
+//   const options = variantOptionsFromRow(opts);
+//   const size = options.find((o) => o.name?.toLowerCase() === "size")?.value || options[0]?.value || null;
+//   const color = options.find((o) => o.name?.toLowerCase() === "color")?.value || options[1]?.value || null;
+//   const fabric = options.find((o) => o.name?.toLowerCase() === "fabric")?.value || null;
+//   const optionValues = options.length ? JSON.stringify(options) : null;
+//   return { size, color, fabric, optionValues };
+// };
+const resolveVariantDimensions = (
+  opts
+) => {
+  const options =
+    variantOptionsFromRow(opts);
+
+  const getValue = (
+    optionName
+  ) => {
+    const found =
+      options.find(
+        (option) =>
+          String(
+            option?.name || ""
+          )
+            .trim()
+            .toLowerCase() ===
+          optionName.toLowerCase()
+      );
+
+    const value = String(
+      found?.value || ""
+    ).trim();
+
+    return value || null;
+  };
+
+  const size =
+    getValue("size");
+
+  const color =
+    getValue("color");
+
+  const fabric =
+    getValue("fabric");
+
+  const optionValues =
+    options.length
+      ? JSON.stringify(options)
+      : null;
+
+  return {
+    size,
+    color,
+    fabric,
+    optionValues,
+  };
 };
 
 const variantComboKey = (opts) => {
@@ -900,7 +1042,13 @@ const createProduct = async (req, res) => {
       meta_title, meta_description, meta_keywords,
       variant_options, variants, seo_data, collection_ids,
       removed_image_ids, variant_image_meta, sync_variant_prices,
+      sale_mode,
+unit_name,
+minimum_quantity,
+quantity_step,
     } = req.body;
+
+
 
     const slug = slugInput?.trim()
       ? await generateUniqueSlug((s, id) => checkProductSlug(s, storeId, id), slugInput.trim())
@@ -911,15 +1059,27 @@ const createProduct = async (req, res) => {
     const stockQty = parseStockValue(stock);
     const stockStatus = stockQty <= 0 ? "out_of_stock" : stockQty <= low_stock_threshold ? "low_stock" : "in_stock";
 
+    const unitConfig =
+  normalizeProductUnitFields({
+    sale_mode,
+    unit_name,
+    minimum_quantity,
+    quantity_step,
+  });
+
     await conn.beginTransaction();
 
     const [result] = await conn.execute(
-      `INSERT INTO products (store_id, name, slug, sku, category_id, sub_category_id, child_category_id, brand, vendor, product_type, price, offer_price, discount_percentage, cost_price, stock, stock_status, low_stock_threshold, short_description, long_description, tags, video_url, gst_percent, shipping_charge, is_featured, is_trending, is_best_seller, is_new_arrival, status, meta_title, meta_description, meta_keywords, created_by, updated_by) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO products (store_id, name, slug, sku, category_id, sub_category_id, child_category_id, brand, vendor, product_type,sale_mode,unit_name,minimum_quantity,quantity_step, price, offer_price, discount_percentage, cost_price, stock, stock_status, low_stock_threshold, short_description, long_description, tags, video_url, gst_percent, shipping_charge, is_featured, is_trending, is_best_seller, is_new_arrival, status, meta_title, meta_description, meta_keywords, created_by, updated_by) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?, ?, ?, ?)`,
       [
         storeId,
         name, slug, sku, category_id || null, sub_category_id || null, child_category_id || null,
         brand || null, vendor || null, product_type || null,
+        unitConfig.saleMode,
+        unitConfig.unitName,
+        unitConfig.minimumQuantity,
+        unitConfig.quantityStep,
         price || 0, offer_price || 0, discount, cost_price || 0, stockQty, stockStatus, low_stock_threshold,
         short_description || null, long_description || null, tags || null,
         video_url || null, gst_percent || 0, shipping_charge || 0,
@@ -935,6 +1095,9 @@ const createProduct = async (req, res) => {
       "INSERT INTO inventory (store_id, product_id, quantity, available_quantity, low_stock_threshold) VALUES (?, ?, ?, ?, ?)",
       [storeId, productId, stockQty, stockQty, low_stock_threshold]
     );
+
+  //     const groupedFiles =
+  // groupUploadedProductFiles(req);
 
     const groupedFiles = groupUploadedProductFiles(req);
     if (hasUploadedProductFiles(req)) {
@@ -1003,7 +1166,34 @@ const updateProduct = async (req, res) => {
       meta_title, meta_description, meta_keywords,
       variant_options, variants, seo_data, collection_ids,
       removed_image_ids, variant_image_meta, sync_variant_prices,
+      sale_mode,
+unit_name,
+minimum_quantity,
+quantity_step,
     } = req.body;
+
+const unitConfig =
+  normalizeProductUnitFields({
+    sale_mode:
+      sale_mode !== undefined
+        ? sale_mode
+        : existing[0].sale_mode,
+
+    unit_name:
+      unit_name !== undefined
+        ? unit_name
+        : existing[0].unit_name,
+
+    minimum_quantity:
+      minimum_quantity !== undefined
+        ? minimum_quantity
+        : existing[0].minimum_quantity,
+
+    quantity_step:
+      quantity_step !== undefined
+        ? quantity_step
+        : existing[0].quantity_step,
+  });
 
     let slug = existing[0].slug;
     if (slugInput?.trim()) {
@@ -1033,7 +1223,11 @@ const updateProduct = async (req, res) => {
         name = ?, slug = ?, category_id = ?, sub_category_id = ?, child_category_id = ?,
         brand = ?, vendor = ?, product_type = ?,
         price = ?, offer_price = ?, discount_percentage = ?, cost_price = ?,
-        stock = ?, stock_status = ?,
+        stock = ?,
+                sale_mode = ?,
+unit_name = ?,
+minimum_quantity = ?,
+quantity_step = ?, stock_status = ?,
         short_description = ?, long_description = ?, tags = ?,
         video_url = ?, gst_percent = ?, shipping_charge = ?,
         is_featured = ?, is_trending = ?, is_best_seller = ?, is_new_arrival = ?, status = ?,
@@ -1047,7 +1241,12 @@ const updateProduct = async (req, res) => {
         product_type !== undefined ? product_type : existing[0].product_type,
         finalPrice, finalOfferPrice,
         discount, cost_price !== undefined ? cost_price : existing[0].cost_price,
-        finalStock, stockStatus,
+        finalStock, 
+unitConfig.saleMode,
+unitConfig.unitName,
+unitConfig.minimumQuantity,
+unitConfig.quantityStep,
+stockStatus,
         short_description !== undefined ? short_description : existing[0].short_description,
         long_description !== undefined ? long_description : existing[0].long_description,
         tags !== undefined ? tags : existing[0].tags,
@@ -1063,6 +1262,7 @@ const updateProduct = async (req, res) => {
         meta_description !== undefined ? meta_description : existing[0].meta_description,
         meta_keywords !== undefined ? meta_keywords : existing[0].meta_keywords,
         req.admin?.id || null, productId, storeId,
+
       ]
     );
 
@@ -1166,32 +1366,398 @@ const bulkDeleteProducts = async (req, res) => {
 
 // @desc    Bulk upload products (Excel/CSV)
 // @route   POST /api/products/bulk-upload
+// const bulkUploadProducts = async (req, res) => {
+//   try {
+//     const storeId = getStoreId(req);
+//     const { products } = req.body;
+//     if (!products || !Array.isArray(products) || !products.length) {
+//       return errorResponse(res, "Products array is required", 400);
+//     }
+
+//     let created = 0;
+//     for (const product of products) {
+//       const slug = await generateUniqueSlug((s, id) => checkProductSlug(s, storeId, id), product.name);
+//       const sku = generateSKU("bulk", product.name, Date.now() + created);
+//       const discount = calculateDiscount(parseFloat(product.price), parseFloat(product.offer_price));
+
+//       // await query(
+//       //   `INSERT INTO products (store_id, name, slug, sku, category_id, price, offer_price, discount_percentage, stock, status, created_by) 
+//       //    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+//       //   [storeId, product.name, slug, sku, product.category_id || null, product.price || 0, product.offer_price || 0, discount, product.stock || 0, "active", req.admin?.id || null]
+//       // );
+//      const [result] = await conn.execute(
+//   `INSERT INTO products (
+//     store_id,
+//     name,
+//     slug,
+//     sku,
+//     category_id,
+//     sub_category_id,
+//     child_category_id,
+//     brand,
+//     vendor,
+//     product_type,
+//     sale_mode,
+//     unit_name,
+//     minimum_quantity,
+//     quantity_step,
+//     price,
+//     offer_price,
+//     discount_percentage,
+//     cost_price,
+//     stock,
+//     stock_status,
+//     low_stock_threshold,
+//     short_description,
+//     long_description,
+//     tags,
+//     video_url,
+//     gst_percent,
+//     shipping_charge,
+//     is_featured,
+//     is_trending,
+//     is_best_seller,
+//     is_new_arrival,
+//     status,
+//     meta_title,
+//     meta_description,
+//     meta_keywords,
+//     created_by,
+//     updated_by
+//   )
+//   VALUES (
+//     ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+//     ?, ?, ?, ?,
+//     ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+//     ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+//     ?, ?, ?
+//   )`,
+//   [
+//     storeId,
+//     name,
+//     slug,
+//     sku,
+//     category_id || null,
+//     sub_category_id || null,
+//     child_category_id || null,
+//     brand || null,
+//     vendor || null,
+//     product_type || null,
+
+//     unitConfig.saleMode,
+//     unitConfig.unitName,
+//     unitConfig.minimumQuantity,
+//     unitConfig.quantityStep,
+
+//     parsePriceValue(price),
+//     parsePriceValue(offer_price),
+//     discount,
+//     parsePriceValue(cost_price),
+//     stockQty,
+//     stockStatus,
+//     low_stock_threshold,
+
+//     short_description || null,
+//     long_description || null,
+//     tags || null,
+//     video_url || null,
+
+//     Number(gst_percent || 0),
+//     Number(shipping_charge || 0),
+
+//     Number(is_featured || 0),
+//     Number(is_trending || 0),
+//     Number(is_best_seller || 0),
+//     Number(is_new_arrival || 0),
+
+//     status || "draft",
+//     meta_title || null,
+//     meta_description || null,
+//     meta_keywords || null,
+
+//     req.admin?.id || null,
+//     req.admin?.id || null,
+//   ]
+// );
+//       created++;
+//     }
+
+//     return successResponse(res, { created }, `${created} products uploaded successfully`, 201);
+//   } catch (error) {
+//     logger.error("Bulk upload error:", error);
+//     return errorResponse(res, "Failed to upload products", 500);
+//   }
+// };
+// @desc    Bulk upload products (Excel/CSV)
+// @route   POST /api/products/bulk-upload
 const bulkUploadProducts = async (req, res) => {
+  const conn = await getConnection();
+
   try {
     const storeId = getStoreId(req);
     const { products } = req.body;
-    if (!products || !Array.isArray(products) || !products.length) {
-      return errorResponse(res, "Products array is required", 400);
+
+    if (
+      !products ||
+      !Array.isArray(products) ||
+      !products.length
+    ) {
+      return errorResponse(
+        res,
+        "Products array is required",
+        400
+      );
     }
 
-    let created = 0;
-    for (const product of products) {
-      const slug = await generateUniqueSlug((s, id) => checkProductSlug(s, storeId, id), product.name);
-      const sku = generateSKU("bulk", product.name, Date.now() + created);
-      const discount = calculateDiscount(parseFloat(product.price), parseFloat(product.offer_price));
+    await conn.beginTransaction();
 
-      await query(
-        `INSERT INTO products (store_id, name, slug, sku, category_id, price, offer_price, discount_percentage, stock, status, created_by) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [storeId, product.name, slug, sku, product.category_id || null, product.price || 0, product.offer_price || 0, discount, product.stock || 0, "active", req.admin?.id || null]
+    let created = 0;
+
+    for (const product of products) {
+      if (!product?.name) {
+        throw new Error(
+          `Product name is required at row ${
+            created + 1
+          }`
+        );
+      }
+
+      const slug =
+        await generateUniqueSlug(
+          (s, id) =>
+            checkProductSlug(
+              s,
+              storeId,
+              id
+            ),
+          product.slug ||
+            product.name
+        );
+
+      const sku =
+        product.sku ||
+        generateSKU(
+          "bulk",
+          product.name,
+          Date.now() + created
+        );
+
+      const price =
+        parsePriceValue(
+          product.price
+        );
+
+      const offerPrice =
+        parsePriceValue(
+          product.offer_price,
+          price
+        );
+
+      const discount =
+        calculateDiscount(
+          price,
+          offerPrice
+        );
+
+      const stockQty =
+        parseStockValue(
+          product.stock
+        );
+
+      const lowStockThreshold =
+        parseStockValue(
+          product.low_stock_threshold,
+          5
+        );
+
+      const stockStatus =
+        resolveStockStatus(
+          stockQty,
+          lowStockThreshold
+        );
+
+      const unitConfig =
+        normalizeProductUnitFields(
+          product
+        );
+
+      const [result] =
+        await conn.execute(
+          `INSERT INTO products (
+            store_id,
+            name,
+            slug,
+            sku,
+            category_id,
+            sub_category_id,
+            child_category_id,
+            brand,
+            vendor,
+            product_type,
+
+            sale_mode,
+            unit_name,
+            minimum_quantity,
+            quantity_step,
+
+            price,
+            offer_price,
+            discount_percentage,
+            cost_price,
+            stock,
+            stock_status,
+            low_stock_threshold,
+
+            short_description,
+            long_description,
+            tags,
+            video_url,
+            gst_percent,
+            shipping_charge,
+
+            is_featured,
+            is_trending,
+            is_best_seller,
+            is_new_arrival,
+
+            status,
+            meta_title,
+            meta_description,
+            meta_keywords,
+            created_by,
+            updated_by
+          )
+          VALUES (
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+            ?, ?, ?, ?,
+            ?, ?, ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?, ?,
+            ?, ?, ?, ?,
+            ?, ?, ?, ?, ?, ?
+          )`,
+          [
+            storeId,
+            product.name,
+            slug,
+            sku,
+
+            product.category_id || null,
+            product.sub_category_id ||
+              null,
+            product.child_category_id ||
+              null,
+
+            product.brand || null,
+            product.vendor || null,
+            product.product_type ||
+              null,
+
+            unitConfig.saleMode,
+            unitConfig.unitName,
+            unitConfig.minimumQuantity,
+            unitConfig.quantityStep,
+
+            price,
+            offerPrice,
+            discount,
+            parsePriceValue(
+              product.cost_price
+            ),
+
+            stockQty,
+            stockStatus,
+            lowStockThreshold,
+
+            product.short_description ||
+              null,
+            product.long_description ||
+              null,
+            product.tags || null,
+            product.video_url || null,
+
+            Number(
+              product.gst_percent || 0
+            ),
+            Number(
+              product.shipping_charge || 0
+            ),
+
+            Number(
+              product.is_featured || 0
+            ),
+            Number(
+              product.is_trending || 0
+            ),
+            Number(
+              product.is_best_seller || 0
+            ),
+            Number(
+              product.is_new_arrival || 0
+            ),
+
+            product.status || "active",
+
+            product.meta_title || null,
+            product.meta_description ||
+              null,
+            product.meta_keywords ||
+              null,
+
+            req.admin?.id || null,
+            req.admin?.id || null,
+          ]
+        );
+
+      const productId =
+        result.insertId;
+
+      await conn.execute(
+        `INSERT INTO inventory (
+          store_id,
+          product_id,
+          quantity,
+          available_quantity,
+          low_stock_threshold
+        )
+        VALUES (?, ?, ?, ?, ?)`,
+        [
+          storeId,
+          productId,
+          stockQty,
+          stockQty,
+          lowStockThreshold,
+        ]
       );
+
       created++;
     }
 
-    return successResponse(res, { created }, `${created} products uploaded successfully`, 201);
+    await conn.commit();
+
+    return successResponse(
+      res,
+      { created },
+      `${created} products uploaded successfully`,
+      201
+    );
   } catch (error) {
-    logger.error("Bulk upload error:", error);
-    return errorResponse(res, "Failed to upload products", 500);
+    await conn.rollback();
+
+    logger.error(
+      "Bulk upload error:",
+      error
+    );
+
+    return errorResponse(
+      res,
+      process.env.NODE_ENV ===
+        "development"
+        ? error.message
+        : "Failed to upload products",
+      500
+    );
+  } finally {
+    conn.release();
   }
 };
 
@@ -1638,3 +2204,7 @@ module.exports.updateVariant = updateVariant;
 module.exports.deleteVariant = deleteVariant;
 module.exports.getProductSeo = getProductSeo;
 module.exports.updateProductSeo = updateProductSeo;
+
+
+
+

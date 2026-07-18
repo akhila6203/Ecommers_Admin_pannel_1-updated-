@@ -15,6 +15,91 @@ const {
   requestShiprocketPickup,
 } = require("../helpers/shiprocketHelper");
 const logger = require("../config/logger");
+
+
+const roundQuantity = (value) =>
+  Math.round(
+    (Number(value) +
+      Number.EPSILON) *
+      100
+  ) / 100;
+
+const normalizeOrderItemUnitFields = (
+  item = {}
+) => {
+  const saleMode = [
+    "piece",
+    "size",
+    "meter",
+  ].includes(
+    String(item.sale_mode || "")
+      .trim()
+      .toLowerCase()
+  )
+    ? String(item.sale_mode)
+        .trim()
+        .toLowerCase()
+    : "piece";
+
+  const isMeter =
+    saleMode === "meter";
+
+  return {
+    saleMode,
+    unitName: String(
+      item.unit_name ||
+        (isMeter
+          ? "meter"
+          : "piece")
+    ).trim(),
+
+    minimumQuantity:
+      isMeter
+        ? Math.max(
+            0.01,
+            Number(
+              item.minimum_quantity ||
+                1
+            )
+          )
+        : 1,
+
+    quantityStep:
+      isMeter
+        ? Math.max(
+            0.01,
+            Number(
+              item.quantity_step ||
+                0.5
+            )
+          )
+        : 1,
+  };
+};
+
+const isValidQuantityStep = (
+  quantity,
+  minimum,
+  step
+) => {
+  if (
+    quantity < minimum ||
+    step <= 0
+  ) {
+    return false;
+  }
+
+  const numberOfSteps =
+    (quantity - minimum) / step;
+
+  return (
+    Math.abs(
+      numberOfSteps -
+        Math.round(numberOfSteps)
+    ) < 0.000001
+  );
+};
+
 // @desc    Get order statistics for admin dashboard
 // @route   GET /api/orders/stats
 const getOrderStats = async (req, res) => {
@@ -172,22 +257,169 @@ const createOrder = async (req, res) => {
 
     const orderId = result[0].insertId;
 
+
     // Insert order items
     if (items && items.length) {
       for (const item of items) {
+            const unitFields =
+  normalizeOrderItemUnitFields(
+    item
+  );
+
+const itemQuantity =
+  roundQuantity(item.quantity);
+
+if (
+  !Number.isFinite(itemQuantity) ||
+  itemQuantity <= 0
+) {
+  await connection.rollback();
+
+  return errorResponse(
+    res,
+    `Invalid quantity for ${
+      item.product_name ||
+      "product"
+    }`,
+    400
+  );
+}
+
+if (
+  unitFields.saleMode !== "meter" &&
+  !Number.isInteger(itemQuantity)
+) {
+  await connection.rollback();
+
+  return errorResponse(
+    res,
+    `${
+      item.product_name ||
+      "Product"
+    } quantity must be a whole number`,
+    400
+  );
+}
+
+if (
+  !isValidQuantityStep(
+    itemQuantity,
+    unitFields.minimumQuantity,
+    unitFields.quantityStep
+  )
+) {
+  await connection.rollback();
+
+  return errorResponse(
+    res,
+    `Invalid quantity increment for ${
+      item.product_name ||
+      "product"
+    }`,
+    400
+  );
+}
+        
+        // await connection.query(
+        //   "INSERT INTO order_items (store_id, order_id, product_id, product_name, product_sku, variant_id, variant_info, quantity, price, offer_price, total_price, gst_percent, gst_amount, image) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        //   [storeId, orderId, item.product_id, item.product_name, item.sku || null, item.variant_id || null, item.variant_info ? JSON.stringify(item.variant_info) : null, item.quantity, item.price, item.offer_price || null, item.total_price, item.gst_percent || 0, item.gst_amount || 0, item.image || null]
+        // );
         await connection.query(
-          "INSERT INTO order_items (store_id, order_id, product_id, product_name, product_sku, variant_id, variant_info, quantity, price, offer_price, total_price, gst_percent, gst_amount, image) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-          [storeId, orderId, item.product_id, item.product_name, item.sku || null, item.variant_id || null, item.variant_info ? JSON.stringify(item.variant_info) : null, item.quantity, item.price, item.offer_price || null, item.total_price, item.gst_percent || 0, item.gst_amount || 0, item.image || null]
-        );
+  `INSERT INTO order_items
+   (
+     store_id,
+     order_id,
+     product_id,
+     product_name,
+     product_sku,
+     variant_id,
+     variant_info,
+
+     sale_mode,
+     unit_name,
+     minimum_quantity,
+     quantity_step,
+
+     quantity,
+     price,
+     offer_price,
+     total_price,
+     gst_percent,
+     gst_amount,
+     image
+   )
+   VALUES (
+     ?, ?, ?, ?, ?, ?, ?,
+     ?, ?, ?, ?,
+     ?, ?, ?, ?, ?, ?, ?
+   )`,
+  [
+    storeId,
+    orderId,
+    item.product_id,
+    item.product_name,
+    item.sku || null,
+    item.variant_id || null,
+    item.variant_info
+      ? JSON.stringify(
+          item.variant_info
+        )
+      : null,
+
+    unitFields.saleMode,
+    unitFields.unitName,
+    unitFields.minimumQuantity,
+    unitFields.quantityStep,
+
+    itemQuantity,
+    item.price,
+    item.offer_price || null,
+    item.total_price,
+    item.gst_percent || 0,
+    item.gst_amount || 0,
+    item.image || null,
+  ]
+);
 
         // Update product stock
         if (item.product_id) {
-          await connection.query("UPDATE products SET stock = stock - ? WHERE id = ? AND store_id = ?", [item.quantity, item.product_id, storeId]);
-          await connection.query("UPDATE inventory SET quantity = quantity - ?, available_quantity = available_quantity - ? WHERE product_id = ? AND store_id = ?", [item.quantity, item.quantity, item.product_id, storeId]);
+          // await connection.query("UPDATE products SET stock = stock - ? WHERE id = ? AND store_id = ?", [itemQuantity, item.product_id, storeId]);
+          await connection.query(
+  `UPDATE products
+   SET stock =
+     GREATEST(stock - ?, 0)
+   WHERE id = ?
+     AND store_id = ?`,
+  [
+    itemQuantity,
+    item.product_id,
+    storeId,
+  ]
+);
+          // await connection.query("UPDATE inventory SET quantity = quantity - ?, available_quantity = available_quantity - ? WHERE product_id = ? AND store_id = ?", [itemQuantity, itemQuantity, item.product_id, storeId]);
+          await connection.query(
+  `UPDATE inventory
+   SET
+     quantity =
+       GREATEST(quantity - ?, 0),
+     available_quantity =
+       GREATEST(
+         available_quantity - ?,
+         0
+       )
+   WHERE product_id = ?
+     AND store_id = ?`,
+  [
+    itemQuantity,
+    itemQuantity,
+    item.product_id,
+    storeId,
+  ]
+);
           if (item.variant_id) {
-            await connection.query("UPDATE product_variants SET stock = GREATEST(stock - ?, 0) WHERE id = ? AND store_id = ?", [item.quantity, item.variant_id, storeId]);
+            await connection.query("UPDATE product_variants SET stock = GREATEST(stock - ?, 0) WHERE id = ? AND store_id = ?", [itemQuantity, item.variant_id, storeId]);
           }
-          await connection.query("INSERT INTO inventory_logs (store_id, product_id, type, quantity, reference_type, reference_id, notes) VALUES (?, ?, 'sale', ?, 'order', ?, ?)", [storeId, item.product_id, -item.quantity, orderId, `Order #${orderNumber}`]);
+          await connection.query("INSERT INTO inventory_logs (store_id, product_id, type, quantity, reference_type, reference_id, notes) VALUES (?, ?, 'sale', ?, 'order', ?, ?)", [storeId, item.product_id, -itemQuantity, orderId, `Order #${orderNumber}`]);
         }
       }
     }
@@ -265,8 +497,21 @@ const updateOrderStatus = async (req, res) => {
     if (status === "delivered" && existing[0].order_status !== "delivered") {
       const items = await query("SELECT product_id, quantity FROM order_items WHERE order_id = ? AND store_id = ?", [req.params.id, storeId]);
       for (const item of items) {
+  //       const restoreQuantity =
+  // roundQuantity(item.quantity);
+  const soldQuantity =
+  roundQuantity(item.quantity);
+
+if (
+  !Number.isFinite(
+    restoreQuantity
+  ) ||
+  restoreQuantity <= 0
+) {
+  continue;
+}
         if (item.product_id) {
-          await query("UPDATE products SET total_sales = total_sales + ? WHERE id = ? AND store_id = ?", [item.quantity, item.product_id, storeId]);
+          await query("UPDATE products SET total_sales = total_sales + ? WHERE id = ? AND store_id = ?", [restoreQuantity, item.product_id, storeId]);
         }
       }
 
@@ -279,20 +524,152 @@ const updateOrderStatus = async (req, res) => {
     }
 
     // If cancelled or returned, restore stock
-    if ((status === "cancelled" || status === "returned") && existing[0].order_status !== "cancelled" && existing[0].order_status !== "returned") {
-      const items = await query("SELECT product_id, variant_id, quantity FROM order_items WHERE order_id = ? AND store_id = ?", [req.params.id, storeId]);
-      for (const item of items) {
-        if (item.product_id) {
-          await query("UPDATE products SET stock = stock + ? WHERE id = ? AND store_id = ?", [item.quantity, item.product_id, storeId]);
-          await query("UPDATE inventory SET quantity = quantity + ?, available_quantity = available_quantity + ? WHERE product_id = ? AND store_id = ?", [item.quantity, item.quantity, item.product_id, storeId]);
-          if (item.variant_id) {
-            await query("UPDATE product_variants SET stock = stock + ? WHERE id = ? AND store_id = ?", [item.quantity, item.variant_id, storeId]);
-          }
-          await query("INSERT INTO inventory_logs (store_id, product_id, type, quantity, reference_type, reference_id, notes) VALUES (?, ?, 'return', ?, 'order', ?, ?)",
-            [storeId, item.product_id, item.quantity, req.params.id, `Order ${status}`]);
-        }
-      }
+    if (
+  (status === "cancelled" ||
+    status === "returned") &&
+  existing[0].order_status !==
+    "cancelled" &&
+  existing[0].order_status !==
+    "returned"
+) {
+  const items = await query(
+    `SELECT
+       product_id,
+       variant_id,
+       quantity
+     FROM order_items
+     WHERE order_id = ?
+       AND store_id = ?`,
+    [req.params.id, storeId]
+  );
+
+  for (const item of items) {
+    const restoreQuantity =
+      roundQuantity(item.quantity);
+
+    if (
+      !Number.isFinite(
+        restoreQuantity
+      ) ||
+      restoreQuantity <= 0
+    ) {
+      continue;
     }
+
+    if (item.product_id) {
+      await query(
+        `UPDATE products
+         SET stock = stock + ?
+         WHERE id = ?
+           AND store_id = ?`,
+        [
+          restoreQuantity,
+          item.product_id,
+          storeId,
+        ]
+      );
+
+      await query(
+        `UPDATE inventory
+         SET
+           quantity =
+             quantity + ?,
+           available_quantity =
+             available_quantity + ?
+         WHERE product_id = ?
+           AND store_id = ?`,
+        [
+          restoreQuantity,
+          restoreQuantity,
+          item.product_id,
+          storeId,
+        ]
+      );
+
+      if (item.variant_id) {
+        await query(
+          `UPDATE product_variants
+           SET stock = stock + ?
+           WHERE id = ?
+             AND store_id = ?`,
+          [
+            restoreQuantity,
+            item.variant_id,
+            storeId,
+          ]
+        );
+      }
+
+      await query(
+        `INSERT INTO inventory_logs
+         (
+           store_id,
+           product_id,
+           type,
+           quantity,
+           reference_type,
+           reference_id,
+           notes
+         )
+         VALUES (
+           ?, ?, 'return', ?,
+           'order', ?, ?
+         )`,
+        [
+          storeId,
+          item.product_id,
+          restoreQuantity,
+          req.params.id,
+          `Order ${status}`,
+        ]
+      );
+    }
+  }
+}
+//     if ((status === "cancelled" || status === "returned") && existing[0].order_status !== "cancelled" && existing[0].order_status !== "returned") {
+//       const items = await query("SELECT product_id, variant_id, quantity FROM order_items WHERE order_id = ? AND store_id = ?", [req.params.id, storeId]);
+//       for (const item of items) {
+//         if (item.product_id) {
+//           // await query("UPDATE products SET stock = stock + ? WHERE id = ? AND store_id = ?", [restoreQuantity, item.product_id, storeId]);
+//          await connection.query(
+//   `UPDATE products
+//    SET stock = GREATEST(stock - ?, 0)
+//    WHERE id = ?
+//      AND store_id = ?`,
+//   [
+//     itemQuantity,
+//     item.product_id,
+//     storeId,
+//   ]
+// );
+//           // await query("UPDATE inventory SET quantity = quantity + ?, available_quantity = available_quantity + ? WHERE product_id = ? AND store_id = ?", [item.quantity, item.quantity, item.product_id, storeId]);
+//           await connection.query(
+//   `UPDATE inventory
+//    SET
+//      quantity =
+//        GREATEST(quantity - ?, 0),
+//      available_quantity =
+//        GREATEST(
+//          available_quantity - ?,
+//          0
+//        )
+//    WHERE product_id = ?
+//      AND store_id = ?`,
+//   [
+//     itemQuantity,
+//     itemQuantity,
+//     item.product_id,
+//     storeId,
+//   ]
+// );
+//           if (item.variant_id) {
+//             await query("UPDATE product_variants SET stock = stock + ? WHERE id = ? AND store_id = ?", [restoreQuantity, item.variant_id, storeId]);
+//           }
+//           await query("INSERT INTO inventory_logs (store_id, product_id, type, quantity, reference_type, reference_id, notes) VALUES (?, ?, 'return', ?, 'order', ?, ?)",
+//             [storeId, item.product_id, restoreQuantity, req.params.id, `Order ${status}`]);
+//         }
+//       }
+//     }
 
     return successResponse(res, { order_status: status }, "Order status updated successfully");
   } catch (error) {

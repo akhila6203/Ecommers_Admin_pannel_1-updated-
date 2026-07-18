@@ -1,128 +1,595 @@
 const { query } = require("../config/db");
-const { successResponse, errorResponse } = require("../helpers/responseHelper");
+
+const {
+  successResponse,
+  errorResponse,
+} = require("../helpers/responseHelper");
+
 const {
   resolveCartScope,
   cartWhereClause,
 } = require("../helpers/cartHelper");
-const safeJsonParse = (value, fallback = {}) => {
+
+/* =========================================================
+   COMMON HELPERS
+========================================================= */
+
+const safeJsonParse = (
+  value,
+  fallback = {}
+) => {
   try {
     if (!value) return fallback;
-    if (typeof value === "object") return value;
+
+    if (
+      typeof value === "object"
+    ) {
+      return value;
+    }
+
     return JSON.parse(value);
   } catch {
     return fallback;
   }
 };
 
-const parseSizes = (itemData, row) => {
-  const fromData = Array.isArray(itemData.sizes) ? itemData.sizes : [];
-  const fallback = row.size || row.variant_size || "Free Size";
-  return fromData.length ? fromData : fallback ? [fallback] : ["Free Size"];
+const roundQuantity = (
+  value
+) =>
+  Math.round(
+    (
+      Number(value || 0) +
+      Number.EPSILON
+    ) * 100
+  ) / 100;
+
+const normalizeSaleMode = (
+  value
+) => {
+  const mode = String(
+    value || "piece"
+  )
+    .trim()
+    .toLowerCase();
+
+  return [
+    "piece",
+    "size",
+    "meter",
+  ].includes(mode)
+    ? mode
+    : "piece";
 };
 
-const requireCartScope = (req, res) => {
-  const scope = resolveCartScope(req);
-  const where = cartWhereClause(scope);
+const parseSizes = (
+  itemData,
+  row
+) => {
+  const sizesFromItemData =
+    Array.isArray(
+      itemData?.sizes
+    )
+      ? itemData.sizes
+          .map((value) =>
+            String(
+              value || ""
+            ).trim()
+          )
+          .filter(Boolean)
+      : [];
+
+  if (
+    sizesFromItemData.length
+  ) {
+    return [
+      ...new Set(
+        sizesFromItemData
+      ),
+    ];
+  }
+
+  const variantSize =
+    String(
+      row.variant_size || ""
+    ).trim();
+
+  return variantSize
+    ? [variantSize]
+    : [];
+};
+
+const requireCartScope = (
+  req,
+  res
+) => {
+  const scope =
+    resolveCartScope(req);
+
+  const where =
+    cartWhereClause(scope);
 
   if (!where) {
-    errorResponse(res, "Cart session id or login required", 400);
+    errorResponse(
+      res,
+      "Cart session id or login required",
+      400
+    );
+
     return null;
   }
 
-  return { scope, where };
+  return {
+    scope,
+    where,
+  };
 };
 
-const getCart = async (req, res) => {
-  try {
-    const ctx = requireCartScope(req, res);
-    if (!ctx) return;
+const isStepAligned = (
+  quantity,
+  minimum,
+  step
+) => {
+  if (
+    quantity < minimum ||
+    step <= 0
+  ) {
+    return false;
+  }
 
-    const { scope } = ctx;
-    const where = cartWhereClause(scope, "c");
+  const stepCount =
+    (quantity - minimum) /
+    step;
+
+  return (
+    Math.abs(
+      stepCount -
+        Math.round(stepCount)
+    ) < 0.000001
+  );
+};
+
+const normalizeRequestedQuantity = ({
+  quantity,
+  saleMode,
+  minimumQuantity,
+  quantityStep,
+}) => {
+  const requestedQuantity =
+    Number(quantity);
+
+  const minimum =
+    Number(
+      minimumQuantity || 1
+    );
+
+  const step =
+    Number(
+      quantityStep || 1
+    );
+
+  if (
+    !Number.isFinite(
+      requestedQuantity
+    ) ||
+    requestedQuantity <= 0
+  ) {
+    throw new Error(
+      "Invalid quantity"
+    );
+  }
+
+  /*
+   * Meter products:
+   * Decimal quantity allowed.
+   */
+  if (
+    saleMode === "meter"
+  ) {
+    if (
+      !Number.isFinite(minimum) ||
+      !Number.isFinite(step) ||
+      minimum <= 0 ||
+      step <= 0
+    ) {
+      throw new Error(
+        "Invalid meter quantity configuration"
+      );
+    }
+
+    if (
+      !isStepAligned(
+        requestedQuantity,
+        minimum,
+        step
+      )
+    ) {
+      throw new Error(
+        `Quantity must start from ${minimum} meter and increase by ${step} meter`
+      );
+    }
+
+    return roundQuantity(
+      requestedQuantity
+    );
+  }
+
+  /*
+   * Piece and size products:
+   * Whole number quantity only.
+   */
+  if (
+    !Number.isInteger(
+      requestedQuantity
+    )
+  ) {
+    throw new Error(
+      "Quantity must be a whole number"
+    );
+  }
+
+  return Math.max(
+    1,
+    requestedQuantity
+  );
+};
+
+const getErrorStatusCode = (
+  error
+) => {
+  const message = String(
+    error?.message || ""
+  );
+
+  const validationMessages = [
+    "Invalid quantity",
+    "Invalid meter quantity configuration",
+    "Quantity must",
+  ];
+
+  const isValidationError =
+    validationMessages.some(
+      (text) =>
+        message.includes(text)
+    );
+
+  return isValidationError
+    ? 400
+    : 500;
+};
+
+/* =========================================================
+   GET CART
+========================================================= */
+
+const getCart = async (
+  req,
+  res
+) => {
+  try {
+    const ctx =
+  requireCartScope(
+    req,
+    res
+  );
+
+if (!ctx) return;
+
+const { scope } = ctx;
+
+    const where =
+      cartWhereClause(
+        scope,
+        "c"
+      );
+
+      if (!where) {
+  return errorResponse(
+    res,
+    "Cart session id or login required",
+    400
+  );
+}
 
     const rows = await query(
-      `SELECT 
-        c.id AS cart_id,
-        c.product_id,
-        c.variant_id,
-        c.quantity AS qty,
-        c.selected_size,
-        c.selected_color,
-        c.selected_size AS size,
-        c.selected_color AS color,
-        c.item_price,
-        c.item_data,
-        p.name,
-        p.slug,
-        p.price,
-        p.offer_price,
-        p.thumbnail,
-        p.stock,
-        pv.fabric AS variant_fabric,
-        pv.color AS variant_color,
-        pv.size AS variant_size
-      FROM cart c
-      INNER JOIN products p 
-        ON p.id = c.product_id 
-       AND p.store_id = c.store_id
-      LEFT JOIN product_variants pv
-        ON pv.id = c.variant_id AND pv.store_id = c.store_id
-      WHERE ${where.clause}
-      ORDER BY c.updated_at DESC`,
+      `SELECT
+         c.id AS cart_id,
+         c.product_id,
+         c.variant_id,
+         c.quantity AS qty,
+         c.selected_size,
+         c.selected_color,
+         c.selected_size AS size,
+         c.selected_color AS color,
+         c.item_price,
+         c.item_data,
+
+         p.name,
+         p.slug,
+         p.price,
+         p.offer_price,
+         p.thumbnail,
+         p.stock AS product_stock,
+         p.gst_percent,
+
+         p.sale_mode,
+         p.unit_name,
+         p.minimum_quantity,
+         p.quantity_step,
+
+         pv.fabric AS variant_fabric,
+         pv.color AS variant_color,
+         pv.size AS variant_size,
+         pv.stock AS variant_stock,
+         pv.price AS variant_price,
+         pv.offer_price AS variant_offer_price
+
+       FROM cart c
+
+       INNER JOIN products p
+         ON p.id = c.product_id
+        AND p.store_id = c.store_id
+
+       LEFT JOIN product_variants pv
+         ON pv.id = c.variant_id
+        AND pv.product_id = c.product_id
+        AND pv.store_id = c.store_id
+
+       WHERE ${where.clause}
+
+       ORDER BY c.updated_at DESC`,
       where.params
     );
 
-    const cart = rows.map((row) => {
-      const itemData = safeJsonParse(row.item_data, {});
-      const selectedSize =
-        row.selected_size || itemData.selected_size || row.variant_size || "Free Size";
-      const selectedColor =
-        row.selected_color || itemData.selected_color || row.variant_color || "";
-        const price = Number(row.item_price || row.offer_price || row.price || 0);
-      // const price = Number(row.offer_price || row.price || row.item_price || 0);
-      const image = itemData.image || row.thumbnail || "";
+    const cart = rows.map(
+      (row) => {
+        const itemData =
+          safeJsonParse(
+            row.item_data,
+            {}
+          );
 
-      return {
-        cart_id: row.cart_id,
-        cartItemId: String(row.cart_id),
-        product_id: row.product_id,
-        variant_id: row.variant_id,
-        qty: Number(row.qty || 1),
-        quantity: Number(row.qty || 1),
-        selected_size: selectedSize,
-        selected_color: selectedColor,
-        size: selectedSize,
-        color: selectedColor,
-        item_price: Number(row.item_price || price || 0),
-        price,
-        name: itemData.name || row.name,
-        slug: itemData.slug || row.slug,
-        thumbnail: row.thumbnail,
-        image,
-        fabric: row.variant_fabric || itemData.fabric || "",
-        material: itemData.material || "",
-        brand: itemData.brand || "",
-        stock: Number(row.stock || 0),
-        sizes: parseSizes(itemData, row),
-        colors: Array.isArray(itemData.colors) ? itemData.colors : [],
-        item_data: itemData,
-      };
-    });
+        const selectedSize =
+          String(
+            row.selected_size ||
+              itemData.selected_size ||
+              row.variant_size ||
+              ""
+          ).trim();
 
-    return successResponse(res, cart, "Cart fetched successfully");
+        const selectedColor =
+          String(
+            row.selected_color ||
+              itemData.selected_color ||
+              row.variant_color ||
+              ""
+          ).trim();
+
+        const saleMode =
+          normalizeSaleMode(
+            row.sale_mode ||
+              itemData.sale_mode
+          );
+
+        const isMeter =
+          saleMode === "meter";
+
+        const unitName =
+          row.unit_name ||
+          itemData.unit_name ||
+          (
+            isMeter
+              ? "meter"
+              : "piece"
+          );
+
+        const minimumQuantity =
+          isMeter
+            ? Number(
+                row.minimum_quantity ||
+                  itemData.minimum_quantity ||
+                  1
+              )
+            : 1;
+
+        const quantityStep =
+          isMeter
+            ? Number(
+                row.quantity_step ||
+                  itemData.quantity_step ||
+                  0.5
+              )
+            : 1;
+
+        const price =
+          Number(
+            row.item_price ||
+              row.variant_offer_price ||
+              row.variant_price ||
+              row.offer_price ||
+              row.price ||
+              0
+          );
+
+        const availableStock =
+          row.variant_id
+            ? Number(
+                row.variant_stock ||
+                  0
+              )
+            : Number(
+                row.product_stock ||
+                  0
+              );
+
+        const image =
+          itemData.image ||
+          row.thumbnail ||
+          "";
+
+        return {
+          cart_id:
+            row.cart_id,
+
+          cartItemId:
+            String(
+              row.cart_id
+            ),
+
+          product_id:
+            row.product_id,
+
+          variant_id:
+            row.variant_id ||
+            null,
+
+          qty:
+            Number(
+              row.qty || 1
+            ),
+
+          quantity:
+            Number(
+              row.qty || 1
+            ),
+
+          selected_size:
+            selectedSize,
+
+          selected_color:
+            selectedColor,
+
+          size:
+            selectedSize,
+
+          color:
+            selectedColor,
+
+          item_price:
+            price,
+
+          price,
+
+          name:
+            itemData.name ||
+            row.name,
+
+          slug:
+            itemData.slug ||
+            row.slug,
+
+          thumbnail:
+            row.thumbnail,
+
+          image,
+
+          fabric:
+            row.variant_fabric ||
+            itemData.fabric ||
+            "",
+
+          material:
+            itemData.material ||
+            "",
+
+          brand:
+            itemData.brand ||
+            "",
+
+          stock:
+            availableStock,
+
+          gst_percent:
+            Number(
+              row.gst_percent ||
+                itemData.gst_percent ||
+                0
+            ),
+
+          sale_mode:
+            saleMode,
+
+          unit_name:
+            unitName,
+
+          minimum_quantity:
+            minimumQuantity,
+
+          quantity_step:
+            quantityStep,
+
+          sizes:
+            parseSizes(
+              itemData,
+              row
+            ),
+
+          colors:
+            Array.isArray(
+              itemData.colors
+            )
+              ? itemData.colors
+              : [],
+
+          variants:
+            Array.isArray(
+              itemData.variants
+            )
+              ? itemData.variants
+              : [],
+
+          item_data:
+            itemData,
+        };
+      }
+    );
+
+    return successResponse(
+      res,
+      cart,
+      "Cart fetched successfully"
+    );
   } catch (error) {
-    console.error("Get cart error:", error);
-    return errorResponse(res, error.message || "Failed to fetch cart", 500);
+    console.error(
+      "Get cart error:",
+      error
+    );
+
+    return errorResponse(
+      res,
+      error.message ||
+        "Failed to fetch cart",
+      500
+    );
   }
 };
 
-const addToCart = async (req, res) => {
+/* =========================================================
+   ADD TO CART
+========================================================= */
+
+const addToCart = async (
+  req,
+  res
+) => {
   try {
-    const ctx = requireCartScope(req, res);
+    const ctx =
+      requireCartScope(
+        req,
+        res
+      );
+
     if (!ctx) return;
 
-    const { scope, where } = ctx;
-    const { storeId, customerId, sessionId } = scope;
+    const {
+      scope,
+      where,
+    } = ctx;
+
+    const {
+      storeId,
+      customerId,
+      sessionId,
+    } = scope;
 
     const {
       product_id,
@@ -135,241 +602,963 @@ const addToCart = async (req, res) => {
     } = req.body;
 
     if (!product_id) {
-      return errorResponse(res, "Product id required", 400);
+      return errorResponse(
+        res,
+        "Product id required",
+        400
+      );
     }
 
-    const productRows = await query(
-      `SELECT id, price, offer_price, stock 
-       FROM products 
-       WHERE id = ? AND store_id = ? AND status = 'active'`,
-      [product_id, storeId]
-    );
+    /*
+     * Product details must always
+     * come from the database.
+     */
+    const productRows =
+      await query(
+        `SELECT
+           id,
+           price,
+           offer_price,
+           stock,
+           sale_mode,
+           unit_name,
+           minimum_quantity,
+           quantity_step
 
-    if (!productRows.length) {
-      return errorResponse(res, "Product not found", 404);
+         FROM products
+
+         WHERE id = ?
+           AND store_id = ?
+           AND status = 'active'
+
+         LIMIT 1`,
+        [
+          product_id,
+          storeId,
+        ]
+      );
+
+    if (
+      !productRows.length
+    ) {
+      return errorResponse(
+        res,
+        "Product not found",
+        404
+      );
     }
 
-    const product = productRows[0];
-    const finalPrice = Number(
-      item_price || product.offer_price || product.price || 0
-    );
+    const product =
+      productRows[0];
 
-    const qty = Math.max(1, Number(quantity) || 1);
+    const saleMode =
+      normalizeSaleMode(
+        product.sale_mode
+      );
+
+    const minimumQuantity =
+      saleMode === "meter"
+        ? Number(
+            product.minimum_quantity ||
+              1
+          )
+        : 1;
+
+    const quantityStep =
+      saleMode === "meter"
+        ? Number(
+            product.quantity_step ||
+              0.5
+          )
+        : 1;
+
+    const requestedQuantity =
+      normalizeRequestedQuantity({
+        quantity,
+        saleMode,
+        minimumQuantity,
+        quantityStep,
+      });
+
+    /*
+     * Check whether same product,
+     * variant, size and color already
+     * exists in cart.
+     */
+    const existingRows =
+      await query(
+        `SELECT
+           id,
+           quantity
+
+         FROM cart
+
+         WHERE ${where.clause}
+           AND product_id = ?
+           AND COALESCE(
+                 variant_id,
+                 0
+               ) =
+               COALESCE(?, 0)
+           AND COALESCE(
+                 selected_size,
+                 ''
+               ) =
+               COALESCE(?, '')
+           AND COALESCE(
+                 selected_color,
+                 ''
+               ) =
+               COALESCE(?, '')
+
+         LIMIT 1`,
+        [
+          ...where.params,
+          product_id,
+          variant_id || null,
+          selected_size || null,
+          selected_color || null,
+        ]
+      );
+
+    const existingQuantity =
+      existingRows.length
+        ? Number(
+            existingRows[0]
+              .quantity || 0
+          )
+        : 0;
+
+    const finalRequestedQuantity =
+      roundQuantity(
+        existingQuantity +
+          requestedQuantity
+      );
+
+    /*
+     * Default stock is product stock.
+     */
+    let availableStock =
+      Number(
+        product.stock || 0
+      );
+
+    let variantPrice = 0;
+
+    /*
+     * Variant selected:
+     * use variant stock and price.
+     */
+    if (variant_id) {
+      const variantRows =
+        await query(
+          `SELECT
+             id,
+             stock,
+             price,
+             offer_price,
+             size,
+             color
+
+           FROM product_variants
+
+           WHERE id = ?
+             AND product_id = ?
+             AND store_id = ?
+             AND status = 'active'
+
+           LIMIT 1`,
+          [
+            variant_id,
+            product_id,
+            storeId,
+          ]
+        );
+
+      if (
+        !variantRows.length
+      ) {
+        return errorResponse(
+          res,
+          "Selected product variant is unavailable",
+          400
+        );
+      }
+
+      const variant =
+        variantRows[0];
+
+      availableStock =
+        Number(
+          variant.stock || 0
+        );
+
+      variantPrice =
+        Number(
+          variant.offer_price ||
+            variant.price ||
+            0
+        );
+    }
+
+    if (
+      finalRequestedQuantity >
+      availableStock
+    ) {
+      return errorResponse(
+        res,
+        saleMode === "meter"
+          ? "Requested fabric length is not available"
+          : "Requested quantity is not available",
+        400
+      );
+    }
+
+    const finalPrice =
+      Number(
+        item_price ||
+          variantPrice ||
+          product.offer_price ||
+          product.price ||
+          0
+      );
 
     const jsonData =
-      item_data && typeof item_data === "object"
-        ? JSON.stringify(item_data)
-        : item_data
-        ? item_data
-        : null;
+      item_data &&
+      typeof item_data ===
+        "object"
+        ? JSON.stringify(
+            item_data
+          )
+        : item_data || null;
 
-    const existing = await query(
-      `SELECT id, quantity 
-       FROM cart
-       WHERE ${where.clause}
-         AND product_id = ?
-         AND COALESCE(variant_id, 0) = COALESCE(?, 0)
-         AND COALESCE(selected_size, '') = COALESCE(?, '')
-         AND COALESCE(selected_color, '') = COALESCE(?, '')
-       LIMIT 1`,
-      [
-        ...where.params,
-        product_id,
-        variant_id || null,
-        selected_size || null,
-        selected_color || null,
-      ]
-    );
-
-    if (existing.length) {
+    /*
+     * Same cart combination exists:
+     * update quantity.
+     */
+    if (
+      existingRows.length
+    ) {
       await query(
-        `UPDATE cart 
-         SET quantity = quantity + ?,
+        `UPDATE cart
+
+         SET quantity = ?,
+             variant_id = ?,
+             selected_size = ?,
+             selected_color = ?,
              item_price = ?,
-             item_data = COALESCE(?, item_data),
+             item_data =
+               COALESCE(
+                 ?,
+                 item_data
+               ),
              updated_at = NOW()
-         WHERE id = ? AND store_id = ?`,
-        [qty, finalPrice, jsonData, existing[0].id, storeId]
+
+         WHERE id = ?
+           AND store_id = ?`,
+        [
+          finalRequestedQuantity,
+          variant_id || null,
+          selected_size || null,
+          selected_color || null,
+          finalPrice,
+          jsonData,
+          existingRows[0].id,
+          storeId,
+        ]
       );
-    } else {
+
+      return successResponse(
+        res,
+        {
+          cart_id:
+            existingRows[0].id,
+
+          quantity:
+            finalRequestedQuantity,
+        },
+        "Cart updated successfully"
+      );
+    }
+
+    /*
+     * New cart item.
+     */
+    const result =
       await query(
-        `INSERT INTO cart
-          (store_id, customer_id, session_id, product_id, variant_id, quantity, selected_size, selected_color, item_price, item_data)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO cart (
+           store_id,
+           customer_id,
+           session_id,
+           product_id,
+           variant_id,
+           quantity,
+           selected_size,
+           selected_color,
+           item_price,
+           item_data
+         )
+         VALUES (
+           ?, ?, ?, ?, ?, ?,
+           ?, ?, ?, ?
+         )`,
         [
           storeId,
           customerId || null,
-          customerId ? null : sessionId,
+          customerId
+            ? null
+            : sessionId,
           product_id,
           variant_id || null,
-          qty,
+          requestedQuantity,
           selected_size || null,
           selected_color || null,
           finalPrice,
           jsonData,
         ]
       );
-    }
 
-    return successResponse(res, null, "Added to cart");
+    return successResponse(
+      res,
+      {
+        cart_id:
+          result.insertId,
+
+        quantity:
+          requestedQuantity,
+      },
+      "Added to cart successfully"
+    );
   } catch (error) {
-    console.error("Add cart error:", error);
-    return errorResponse(res, error.message || "Failed to add cart", 500);
+    console.error(
+      "Add cart error:",
+      error
+    );
+
+    return errorResponse(
+      res,
+      error.message ||
+        "Failed to add cart",
+      getErrorStatusCode(
+        error
+      )
+    );
   }
 };
 
-// 
-
-const updateCartItem = async (req, res) => {
+/* =========================================================
+   UPDATE CART ITEM
+   Quantity / Size / Color / Variant
+========================================================= */
+const updateCartItem = async (
+  req,
+  res
+) => {
   try {
-    const ctx = requireCartScope(req, res);
-    if (!ctx) return;
-
-    const { where, scope } = ctx;
-    const { storeId } = scope;
-    const cartId = req.params.id;
-
-    if (!cartId) {
-      return errorResponse(res, "Cart item id required", 400);
-    }
-
-    const { quantity, selected_size, selected_color, variant_id, item_price } = req.body;
-
-    let finalVariantId = variant_id;
-    let finalItemPrice = item_price;
-    let finalSelectedColor = selected_color;
-
-    if (selected_size !== undefined) {
-      const cartRows = await query(
-        `SELECT product_id, selected_color
-         FROM cart
-         WHERE id = ? AND ${where.clause}
-         LIMIT 1`,
-        [cartId, ...where.params]
+    const ctx =
+      requireCartScope(
+        req,
+        res
       );
 
-      if (cartRows.length) {
-        const productId = cartRows[0].product_id;
-        const colorToUse = selected_color || cartRows[0].selected_color || "";
+    if (!ctx) return;
 
-        const variantRows = await query(
-          `SELECT id, color, size, price, offer_price
+    const { scope } = ctx;
+    const { storeId } = scope;
+
+    const selectWhere =
+      cartWhereClause(
+        scope,
+        "c"
+      );
+
+ 
+    const updateWhere =
+      cartWhereClause(
+        scope
+      );
+
+    if (
+      !selectWhere ||
+      !updateWhere
+    ) {
+      return errorResponse(
+        res,
+        "Cart session id or login required",
+        400
+      );
+    }
+
+    const cartId =
+      req.params.id;
+
+    if (!cartId) {
+      return errorResponse(
+        res,
+        "Cart item id required",
+        400
+      );
+    }
+
+    const {
+      quantity,
+      selected_size,
+      selected_color,
+      variant_id,
+      item_price,
+    } = req.body;
+
+    const cartRows =
+      await query(
+        `SELECT
+           c.id,
+           c.product_id,
+           c.variant_id,
+           c.quantity,
+           c.selected_size,
+           c.selected_color,
+           c.item_price,
+
+           p.sale_mode,
+           p.unit_name,
+           p.minimum_quantity,
+           p.quantity_step,
+           p.stock AS product_stock,
+           p.price AS product_price,
+           p.offer_price AS product_offer_price
+
+         FROM cart c
+
+         INNER JOIN products p
+           ON p.id = c.product_id
+          AND p.store_id = c.store_id
+
+         WHERE c.id = ?
+           AND ${selectWhere.clause}
+
+         LIMIT 1`,
+        [
+          cartId,
+          ...selectWhere.params,
+        ]
+      );
+
+    if (!cartRows.length) {
+      return errorResponse(
+        res,
+        "Cart item not found",
+        404
+      );
+    }
+
+    const cartItem =
+      cartRows[0];
+
+    const productId =
+      cartItem.product_id;
+
+    const saleMode =
+      normalizeSaleMode(
+        cartItem.sale_mode
+      );
+
+    const minimumQuantity =
+      saleMode === "meter"
+        ? Number(
+            cartItem.minimum_quantity ||
+              1
+          )
+        : 1;
+
+    const quantityStep =
+      saleMode === "meter"
+        ? Number(
+            cartItem.quantity_step ||
+              0.5
+          )
+        : 1;
+
+    let finalVariantId =
+      variant_id !== undefined
+        ? variant_id || null
+        : cartItem.variant_id;
+
+    let finalSelectedSize =
+      selected_size !== undefined
+        ? selected_size || null
+        : cartItem.selected_size;
+
+    let finalSelectedColor =
+      selected_color !== undefined
+        ? selected_color || null
+        : cartItem.selected_color;
+
+    let finalItemPrice =
+      item_price !== undefined
+        ? Number(
+            item_price || 0
+          )
+        : Number(
+            cartItem.item_price ||
+              cartItem.product_offer_price ||
+              cartItem.product_price ||
+              0
+          );
+
+    let availableStock =
+      Number(
+        cartItem.product_stock ||
+          0
+      );
+
+    if (
+      selected_size !== undefined
+    ) {
+      const colorToUse =
+        selected_color !==
+        undefined
+          ? selected_color || ""
+          : cartItem
+              .selected_color ||
+            "";
+
+      const variantRows =
+        await query(
+          `SELECT
+             id,
+             size,
+             color,
+             stock,
+             price,
+             offer_price
+
            FROM product_variants
+
            WHERE product_id = ?
              AND store_id = ?
              AND size = ?
-             AND (? = '' OR color = ?)
+             AND status = 'active'
+             AND (
+               ? = ''
+               OR color = ?
+             )
+
            LIMIT 1`,
-          [productId, storeId, selected_size, colorToUse, colorToUse]
+          [
+            productId,
+            storeId,
+            selected_size,
+            colorToUse,
+            colorToUse,
+          ]
         );
 
-        if (variantRows.length) {
-          const v = variantRows[0];
-          finalVariantId = v.id;
-          finalSelectedColor = v.color || colorToUse;
-          finalItemPrice = Number(v.offer_price || v.price || 0);
-        }
+      if (
+        !variantRows.length
+      ) {
+        return errorResponse(
+          res,
+          "Selected size is unavailable",
+          400
+        );
       }
+
+      const matchedVariant =
+        variantRows[0];
+
+      finalVariantId =
+        matchedVariant.id;
+
+      finalSelectedSize =
+        matchedVariant.size ||
+        selected_size;
+
+      finalSelectedColor =
+        matchedVariant.color ||
+        colorToUse ||
+        null;
+
+      finalItemPrice =
+        Number(
+          matchedVariant.offer_price ||
+            matchedVariant.price ||
+            finalItemPrice ||
+            0
+        );
+
+      availableStock =
+        Number(
+          matchedVariant.stock ||
+            0
+        );
+    } else if (
+      finalVariantId
+    ) {
+ 
+      const variantRows =
+        await query(
+          `SELECT
+             id,
+             size,
+             color,
+             stock,
+             price,
+             offer_price
+
+           FROM product_variants
+
+           WHERE id = ?
+             AND product_id = ?
+             AND store_id = ?
+             AND status = 'active'
+
+           LIMIT 1`,
+          [
+            finalVariantId,
+            productId,
+            storeId,
+          ]
+        );
+
+      if (
+        !variantRows.length
+      ) {
+        return errorResponse(
+          res,
+          "Selected product variant is unavailable",
+          400
+        );
+      }
+
+      const matchedVariant =
+        variantRows[0];
+
+      availableStock =
+        Number(
+          matchedVariant.stock ||
+            0
+        );
+
+      if (
+        item_price === undefined
+      ) {
+        finalItemPrice =
+          Number(
+            matchedVariant.offer_price ||
+              matchedVariant.price ||
+              finalItemPrice ||
+              0
+          );
+      }
+    }
+
+    let finalQuantity =
+      Number(
+        cartItem.quantity ||
+          1
+      );
+
+    if (
+      quantity !== undefined
+    ) {
+      finalQuantity =
+        normalizeRequestedQuantity({
+          quantity,
+          saleMode,
+          minimumQuantity,
+          quantityStep,
+        });
+    }
+
+    if (
+      finalQuantity >
+      availableStock
+    ) {
+      return errorResponse(
+        res,
+        saleMode === "meter"
+          ? "Requested fabric length is not available"
+          : "Requested quantity is not available",
+        400
+      );
     }
 
     const fields = [];
     const values = [];
 
-    if (quantity !== undefined) {
-      fields.push("quantity = ?");
-      values.push(Math.max(1, Number(quantity) || 1));
+    if (
+      quantity !== undefined
+    ) {
+      fields.push(
+        "quantity = ?"
+      );
+
+      values.push(
+        finalQuantity
+      );
     }
 
-    if (selected_size !== undefined) {
-      fields.push("selected_size = ?");
-      values.push(selected_size || null);
+    if (
+      selected_size !== undefined
+    ) {
+      fields.push(
+        "selected_size = ?"
+      );
+
+      values.push(
+        finalSelectedSize
+      );
     }
 
-    if (finalSelectedColor !== undefined) {
-      fields.push("selected_color = ?");
-      values.push(finalSelectedColor || null);
+    if (
+      selected_color !== undefined ||
+      selected_size !== undefined
+    ) {
+      fields.push(
+        "selected_color = ?"
+      );
+
+      values.push(
+        finalSelectedColor
+      );
     }
 
-    if (finalVariantId !== undefined) {
-      fields.push("variant_id = ?");
-      values.push(finalVariantId || null);
+    if (
+      variant_id !== undefined ||
+      selected_size !== undefined
+    ) {
+      fields.push(
+        "variant_id = ?"
+      );
+
+      values.push(
+        finalVariantId
+      );
     }
 
-    if (finalItemPrice !== undefined) {
-      fields.push("item_price = ?");
-      values.push(Number(finalItemPrice) || 0);
+    if (
+      item_price !== undefined ||
+      selected_size !== undefined
+    ) {
+      fields.push(
+        "item_price = ?"
+      );
+
+      values.push(
+        Number(
+          finalItemPrice ||
+            0
+        )
+      );
     }
 
     if (!fields.length) {
-      return errorResponse(res, "Nothing to update", 400);
+      return errorResponse(
+        res,
+        "Nothing to update",
+        400
+      );
     }
 
-    fields.push("updated_at = NOW()");
-
-    const result = await query(
-      `UPDATE cart
-       SET ${fields.join(", ")}
-       WHERE id = ? AND ${where.clause}`,
-      [...values, cartId, ...where.params]
+    fields.push(
+      "updated_at = NOW()"
     );
 
-    if (result?.affectedRows === 0) {
-      return errorResponse(res, "Cart item not found", 404);
+    const result =
+      await query(
+        `UPDATE cart
+         SET ${fields.join(", ")}
+         WHERE id = ?
+           AND ${updateWhere.clause}`,
+        [
+          ...values,
+          cartId,
+          ...updateWhere.params,
+        ]
+      );
+
+    if (
+      result?.affectedRows === 0
+    ) {
+      return errorResponse(
+        res,
+        "Cart item not found",
+        404
+      );
     }
 
-    return successResponse(res, null, "Cart updated");
+    return successResponse(
+      res,
+      {
+        cart_id:
+          Number(cartId),
+
+        quantity:
+          finalQuantity,
+
+        variant_id:
+          finalVariantId ||
+          null,
+
+        selected_size:
+          finalSelectedSize ||
+          "",
+
+        selected_color:
+          finalSelectedColor ||
+          "",
+
+        item_price:
+          Number(
+            finalItemPrice ||
+              0
+          ),
+      },
+      "Cart updated successfully"
+    );
   } catch (error) {
-    console.error("Update cart error:", error);
-    return errorResponse(res, error.message || "Failed to update cart", 500);
+    console.error(
+      "Update cart error:",
+      error
+    );
+
+    return errorResponse(
+      res,
+      error.message ||
+        "Failed to update cart",
+      getErrorStatusCode(
+        error
+      )
+    );
   }
 };
 
-const removeCartItem = async (req, res) => {
+/* =========================================================
+   REMOVE ONE CART ITEM
+========================================================= */
+
+const removeCartItem = async (
+  req,
+  res
+) => {
   try {
-    const ctx = requireCartScope(req, res);
+    const ctx =
+      requireCartScope(
+        req,
+        res
+      );
+
     if (!ctx) return;
 
     const { where } = ctx;
-    const cartId = req.params.id;
+
+    const cartId =
+      req.params.id;
 
     if (!cartId) {
-      return errorResponse(res, "Cart item id required", 400);
+      return errorResponse(
+        res,
+        "Cart item id required",
+        400
+      );
     }
 
-    const result = await query(
-      `DELETE FROM cart WHERE id = ? AND ${where.clause}`,
-      [cartId, ...where.params]
+    const result =
+      await query(
+        `DELETE FROM cart
+         WHERE id = ?
+           AND ${where.clause}`,
+        [
+          cartId,
+          ...where.params,
+        ]
+      );
+
+    if (
+      result?.affectedRows === 0
+    ) {
+      return errorResponse(
+        res,
+        "Cart item not found",
+        404
+      );
+    }
+
+    return successResponse(
+      res,
+      null,
+      "Cart item removed"
+    );
+  } catch (error) {
+    console.error(
+      "Remove cart error:",
+      error
     );
 
-    if (result?.affectedRows === 0) {
-      return errorResponse(res, "Cart item not found", 404);
-    }
-
-    return successResponse(res, null, "Cart item removed");
-  } catch (error) {
-    console.error("Remove cart error:", error);
-    return errorResponse(res, error.message || "Failed to remove cart item", 500);
+    return errorResponse(
+      res,
+      error.message ||
+        "Failed to remove cart item",
+      500
+    );
   }
 };
 
-const clearCart = async (req, res) => {
+/* =========================================================
+   CLEAR COMPLETE CART
+========================================================= */
+
+const clearCart = async (
+  req,
+  res
+) => {
   try {
-    const ctx = requireCartScope(req, res);
+    const ctx =
+      requireCartScope(
+        req,
+        res
+      );
+
     if (!ctx) return;
 
     const { where } = ctx;
 
-    await query(`DELETE FROM cart WHERE ${where.clause}`, where.params);
+    await query(
+      `DELETE FROM cart
+       WHERE ${where.clause}`,
+      where.params
+    );
 
-    return successResponse(res, null, "Cart cleared");
+    return successResponse(
+      res,
+      null,
+      "Cart cleared"
+    );
   } catch (error) {
-    console.error("Clear cart error:", error);
-    return errorResponse(res, error.message || "Failed to clear cart", 500);
+    console.error(
+      "Clear cart error:",
+      error
+    );
+
+    return errorResponse(
+      res,
+      error.message ||
+        "Failed to clear cart",
+      500
+    );
   }
 };
 
-module.exports.getCart = getCart;
-module.exports.addToCart = addToCart;
-module.exports.updateCartItem = updateCartItem;
-module.exports.removeCartItem = removeCartItem;
-module.exports.clearCart = clearCart;
+/* =========================================================
+   EXPORTS
+========================================================= */
+
+module.exports = {
+  getCart,
+  addToCart,
+  updateCartItem,
+  removeCartItem,
+  clearCart,
+};
+
+

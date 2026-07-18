@@ -2,6 +2,7 @@ const { query } = require("../config/db");
 const { successResponse, errorResponse } = require("../helpers/responseHelper");
 const { getStoreId } = require("../helpers/storeHelper");
 const logger = require("../config/logger");
+
 const wishlistSelect = `
   SELECT
     w.id AS wishlist_id,
@@ -13,10 +14,31 @@ const wishlistSelect = `
     p.offer_price,
     p.thumbnail,
     p.stock,
-    p.status AS product_status
+    p.status AS product_status,
+    p.sale_mode,
+    p.unit_name,
+    p.minimum_quantity,
+    p.quantity_step
   FROM wishlists w
-  INNER JOIN products p ON p.id = w.product_id AND p.store_id = w.store_id
+  INNER JOIN products p
+    ON p.id = w.product_id
+   AND p.store_id = w.store_id
 `;
+// const wishlistSelect = `
+//   SELECT
+//     w.id AS wishlist_id,
+//     w.product_id,
+//     w.created_at AS added_at,
+//     p.name,
+//     p.slug,
+//     p.price,
+//     p.offer_price,
+//     p.thumbnail,
+//     p.stock,
+//     p.status AS product_status
+//   FROM wishlists w
+//   INNER JOIN products p ON p.id = w.product_id AND p.store_id = w.store_id
+// `;
 
 const getWishlist = async (req, res) => {
   try {
@@ -30,19 +52,84 @@ const getWishlist = async (req, res) => {
       [storeId, customerId]
     );
 
-    const wishlist = rows.map((row) => ({
-      wishlist_id: row.wishlist_id,
-      product_id: row.product_id,
-      name: row.name,
-      slug: row.slug,
-      price: Number(row.offer_price || row.price || 0),
-      old_price: Number(row.price || 0),
-      thumbnail: row.thumbnail,
-      stock: Number(row.stock || 0),
-      in_stock: Number(row.stock || 0) > 0,
-      product_status: row.product_status,
-      added_at: row.added_at,
-    }));
+    // const wishlist = rows.map((row) => ({
+    //   wishlist_id: row.wishlist_id,
+    //   product_id: row.product_id,
+    //   name: row.name,
+    //   slug: row.slug,
+    //   price: Number(row.offer_price || row.price || 0),
+    //   old_price: Number(row.price || 0),
+    //   thumbnail: row.thumbnail,
+    //   stock: Number(row.stock || 0),
+    //   in_stock: Number(row.stock || 0) > 0,
+    //   product_status: row.product_status,
+    //   added_at: row.added_at,
+    // }));
+    const wishlist = rows.map(
+  (row) => ({
+    wishlist_id:
+      row.wishlist_id,
+
+    product_id:
+      row.product_id,
+
+    name: row.name,
+    slug: row.slug,
+
+    price: Number(
+      row.offer_price ||
+        row.price ||
+        0
+    ),
+
+    old_price: Number(
+      row.price || 0
+    ),
+
+    thumbnail:
+      row.thumbnail,
+
+    stock: Number(
+      row.stock || 0
+    ),
+
+    in_stock:
+      Number(
+        row.stock || 0
+      ) > 0,
+
+    product_status:
+      row.product_status,
+
+    sale_mode:
+      row.sale_mode ||
+      "piece",
+
+    unit_name:
+      row.unit_name ||
+      (
+        row.sale_mode ===
+        "meter"
+          ? "meter"
+          : "piece"
+      ),
+
+    minimum_quantity:
+      Number(
+        row.minimum_quantity ||
+          1
+      ),
+
+    quantity_step:
+      Number(
+        row.quantity_step ||
+          1
+      ),
+
+    added_at:
+      row.added_at,
+  })
+);
 
     return successResponse(res, wishlist, "Wishlist fetched successfully");
   } catch (error) {
