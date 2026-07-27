@@ -14,7 +14,8 @@ import {
 } from "@/components/ui/select";
 import { uploadSettingsImage } from "@/services/settingsService";
 
-const API_ORIGIN = "http://localhost:5000";
+// const API_ORIGIN = "http://localhost:5000";
+const API_ORIGIN = "https://api.lmshowroom.com";
 
 const LAYOUTS = {
   "1-column": { label: "1 Column (Full)", count: 1 },

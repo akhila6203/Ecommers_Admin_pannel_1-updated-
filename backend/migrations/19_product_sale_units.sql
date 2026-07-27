@@ -151,3 +151,14 @@ ALTER TABLE order_items
     DECIMAL(10,2)
     NOT NULL DEFAULT 1.00
     AFTER minimum_quantity;
+
+
+    USE lms;
+
+    ALTER TABLE orders
+    ADD COLUMN estimated_delivery_days VARCHAR(50) NULL
+    AFTER tracking_url;
+
+    ALTER TABLE orders
+    ADD COLUMN courier_estimated_delivery DATE NULL
+    AFTER estimated_delivery;

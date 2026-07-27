@@ -1,6 +1,7 @@
 const API_BASE = import.meta.env.VITE_API_URL
   ? import.meta.env.VITE_API_URL.replace(/\/api\/?$/, "")
-  : (import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api").replace(/\/api\/?$/, "");;
+   : (import.meta.env.VITE_API_BASE_URL || "https://api.lmshowroom.com/api").replace(/\/api\/?$/, "");;
+  // : (import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api").replace(/\/api\/?$/, "");;
 
 const PLACEHOLDER = "https://placehold.co/600x400/png?text=No+Image";
 

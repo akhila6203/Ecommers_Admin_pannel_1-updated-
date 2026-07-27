@@ -12,6 +12,147 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { useStoreBranding } from "@/contexts/StoreBrandingContext";
 
 
+const ADMIN_SEARCH_ITEMS = [
+  {
+    label: "Dashboard",
+    path: "/",
+    keywords: ["dashboard", "home", "overview", "stats"],
+  },
+  {
+    label: "Add Product",
+    path: "/products/add",
+    keywords: ["add product", "create product", "new product"],
+  },
+  {
+    label: "Product List",
+    path: "/products/list",
+    keywords: [
+      "product",
+      "products",
+      "product list",
+      "manage products",
+      "inventory",
+      "stock",
+    ],
+  },
+  {
+    label: "Main Categories",
+    path: "/categories/main",
+    keywords: [
+      "category",
+      "categories",
+      "main category",
+      "main categories",
+    ],
+  },
+  {
+    label: "Sub Categories",
+    path: "/categories/sub",
+    keywords: [
+      "sub category",
+      "sub categories",
+      "subcategory",
+      "subcategories",
+    ],
+  },
+  {
+    label: "Child Categories",
+    path: "/categories/child",
+    keywords: [
+      "child category",
+      "child categories",
+      "childcategory",
+    ],
+  },
+  {
+    label: "Collections",
+    path: "/collections",
+    keywords: ["collection", "collections"],
+  },
+  {
+    label: "Orders",
+    path: "/orders",
+    keywords: [
+      "order",
+      "orders",
+      "order list",
+      "shipping",
+      "shipment",
+      "tracking",
+    ],
+  },
+  {
+    label: "Customers",
+    path: "/customers",
+    keywords: [
+      "customer",
+      "customers",
+      "customer list",
+      "users",
+      "buyers",
+    ],
+  },
+  {
+    label: "Offers / Coupons",
+    path: "/offers",
+    keywords: [
+      "offer",
+      "offers",
+      "coupon",
+      "coupons",
+      "discount",
+      "discounts",
+    ],
+  },
+  {
+    label: "Banners",
+    path: "/gallery",
+    keywords: [
+      "banner",
+      "banners",
+      "gallery",
+      "banner video",
+      "media",
+    ],
+  },
+  {
+    label: "Pages",
+    path: "/conditions",
+    keywords: [
+      "page",
+      "pages",
+      "privacy",
+      "terms",
+      "contact",
+      "about",
+      "conditions",
+    ],
+  },
+  {
+    label: "Store Settings",
+    path: "/settings/store",
+    keywords: [
+      "store settings",
+      "store",
+      "shipping settings",
+      "payment settings",
+      "integration",
+      "shiprocket",
+      "razorpay",
+      "whatsapp",
+    ],
+  },
+  {
+    label: "Admin Settings",
+    path: "/settings/admin",
+    keywords: [
+      "admin settings",
+      "admin",
+      "profile",
+      "administrator",
+    ],
+  },
+];
 
 function SlidePanel({ open, onClose, title, children }) {
   return (
@@ -66,6 +207,41 @@ export function Header() {
   const { isDark, toggle: toggleTheme } = useTheme();
   const [openPanel, setOpenPanel] = useState("none");
   const [search, setSearch] = useState("");
+  const [showSearchResults, setShowSearchResults] =
+  useState(false);
+
+  const normalizedSearch = search.trim().toLowerCase();
+
+const filteredSearchItems = normalizedSearch
+  ? ADMIN_SEARCH_ITEMS.filter((item) => {
+      const searchableText = [
+        item.label,
+        ...item.keywords,
+      ]
+        .join(" ")
+        .toLowerCase();
+
+      return searchableText.includes(normalizedSearch);
+    }).slice(0, 6)
+  : [];
+
+const openSearchItem = (item) => {
+  navigate(item.path);
+  setSearch("");
+  setShowSearchResults(false);
+};
+
+const handleSearchSubmit = (event) => {
+  event.preventDefault();
+
+  if (!normalizedSearch) {
+    return;
+  }
+
+  if (filteredSearchItems.length > 0) {
+    openSearchItem(filteredSearchItems[0]);
+  }
+};
 
   const closePanel = () => setOpenPanel("none");
   const togglePanel = (panel) => setOpenPanel((prev) => (prev === panel ? "none" : panel));
@@ -136,8 +312,8 @@ export function Header() {
               <Sparkles className="w-3.5 h-3.5 text-primary-foreground" />
             </div>
           )}
-          <div className="relative max-w-md flex-1 hidden sm:block">
-          {/* <div className="relative max-w-md flex-1"> */}
+          {/* <div className="relative max-w-md flex-1 hidden sm:block">
+          
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
             type="text"
@@ -146,7 +322,91 @@ export function Header() {
             placeholder="Search products, orders, customers..."
             className="w-full h-10 pl-10 pr-4 rounded-lg bg-secondary border border-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/30 transition"
           />
-        </div>
+        </div> */}
+        <div className="relative max-w-md flex-1 hidden sm:block">
+  <form
+    onSubmit={handleSearchSubmit}
+    className="relative"
+  >
+    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+
+    <input
+      type="text"
+      value={search}
+      onChange={(event) => {
+        setSearch(event.target.value);
+        setShowSearchResults(true);
+      }}
+      onFocus={() =>
+        setShowSearchResults(true)
+      }
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          setShowSearchResults(false);
+        }
+      }}
+      placeholder="Search products, orders, customers..."
+      autoComplete="off"
+      className="w-full h-10 pl-10 pr-10 rounded-lg bg-secondary border border-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/30 transition"
+    />
+
+    {search && (
+      <button
+        type="button"
+        onClick={() => {
+          setSearch("");
+          setShowSearchResults(false);
+        }}
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+        aria-label="Clear search"
+      >
+        <X className="w-4 h-4" />
+      </button>
+    )}
+  </form>
+
+  {showSearchResults &&
+    normalizedSearch && (
+      <div className="absolute left-0 right-0 top-[46px] z-50 overflow-hidden rounded-xl border border-border bg-card shadow-xl">
+        {filteredSearchItems.length > 0 ? (
+          <div className="py-1">
+            {filteredSearchItems.map(
+              (item) => (
+                <button
+                  key={item.path}
+                  type="button"
+                  onMouseDown={(event) => {
+                    event.preventDefault();
+                    openSearchItem(item);
+                  }}
+                  className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-foreground transition hover:bg-secondary"
+                >
+                  <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+
+                  <div className="min-w-0">
+                    <p className="font-medium">
+                      {item.label}
+                    </p>
+
+                    <p className="truncate text-xs text-muted-foreground">
+                      {item.path}
+                    </p>
+                  </div>
+                </button>
+              )
+            )}
+          </div>
+        ) : (
+          <div className="px-4 py-4 text-sm text-muted-foreground">
+            No admin page found for
+            <span className="ml-1 font-medium text-foreground">
+              “{search}”
+            </span>
+          </div>
+        )}
+      </div>
+    )}
+</div>
         </div>
 
         <div className="flex items-center gap-2">
@@ -255,8 +515,10 @@ export function Header() {
 
 
 
-// import { Search, ExternalLink, LogOut, User, Store, ChevronDown, X, Moon, Sun, Sparkles } from "lucide-react";
+
+// // import { Search, ExternalLink, LogOut, User, Store, ChevronDown, X, Moon, Sun, Sparkles } from "lucide-react";
 // import { useState } from "react";
+// import { Search, ExternalLink, LogOut, User, Store, ChevronDown, X, Moon, Sun, Sparkles, Menu } from "lucide-react";
 // import { logout as logoutApi } from "@/services/authService";
 // import { useNavigate } from "react-router-dom";
 // import { AnimatePresence, motion } from "framer-motion";
@@ -267,12 +529,7 @@ export function Header() {
 // import { useTheme } from "@/contexts/ThemeContext";
 // import { useStoreBranding } from "@/contexts/StoreBrandingContext";
 
-// // const notifications = [
-// //   { text: "New order #ORD-1006 received", time: "5m ago", unread: true },
-// //   { text: "Low stock alert: Kundan Necklace Set (3 left)", time: "1h ago", unread: true },
-// //   { text: "New review on Banarasi Silk Saree", time: "2h ago", unread: false },
-// //   { text: "Coupon FESTIVE20 expires in 20 days", time: "4h ago", unread: false },
-// // ];
+
 
 // function SlidePanel({ open, onClose, title, children }) {
 //   return (
@@ -311,7 +568,8 @@ export function Header() {
 // }
 
 // export function Header() {
-//   const { collapsed } = useSidebar();
+//   const { collapsed, setMobileOpen } = useSidebar();
+//   // const { collapsed } = useSidebar();
 //   const navigate = useNavigate();
 //   const { logoUrl, storeName, logoSize } = useStoreBranding();
 //   const { data: adminProfile } = useQuery({
@@ -326,6 +584,7 @@ export function Header() {
 //   const { isDark, toggle: toggleTheme } = useTheme();
 //   const [openPanel, setOpenPanel] = useState("none");
 //   const [search, setSearch] = useState("");
+
 
 //   const closePanel = () => setOpenPanel("none");
 //   const togglePanel = (panel) => setOpenPanel((prev) => (prev === panel ? "none" : panel));
@@ -352,27 +611,52 @@ export function Header() {
 
 //   return (
 //     <>
-//       <header
+//     <header
+//   className="fixed top-0 right-0 z-30 h-16 bg-card/95 backdrop-blur-md border-b border-border flex items-center justify-between px-3 sm:px-6 transition-all duration-300"
+//   style={{
+//     left:
+//       window.innerWidth >= 1024
+//         ? collapsed
+//           ? 72
+//           : 260
+//         : window.innerWidth >= 768
+//         ? 72
+//         : 0,
+//   }}
+// >
+//     {/* <header
+//   className="fixed top-0 right-0 left-0 md:left-[72px] lg:left-[260px] z-30 h-16 bg-card/95 backdrop-blur-md border-b border-border flex items-center justify-between px-3 sm:px-6 transition-all duration-300"
+// > */}
+//       {/* <header
 //         className="fixed top-0 right-0 z-30 h-16 bg-card/95 backdrop-blur-md border-b border-border flex items-center justify-between px-6 transition-all duration-300"
 //         style={{ left: collapsed ? 72 : 260 }}
-//       >
+//       > */}
 //         <div className="flex items-center gap-3 flex-1 min-w-0">
+//           <button
+//     onClick={() => setMobileOpen(true)}
+//     className="md:hidden w-9 h-9 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-secondary hover:text-foreground"
+//   >
+//     <Menu className="w-5 h-5" />
+//   </button>
 //           {logoUrl ? (
 //             <img
 //               src={logoUrl}
 //               alt={storeName}
 //               style={{ width: Math.min(logoSize, 32), height: Math.min(logoSize, 32) }}
-//               className="rounded-md object-contain shrink-0 hidden sm:block"
+//               className="rounded-md object-contain shrink-0 block"
+//               // className="rounded-md object-contain shrink-0 hidden sm:block"
 //             />
 //           ) : (
 //             <div
 //               style={{ width: 32, height: 32 }}
-//               className="rounded-md bg-primary flex items-center justify-center shrink-0 hidden sm:flex shadow-sm shadow-primary/20"
+//               className="rounded-md bg-primary flex items-center justify-center shrink-0 shadow-sm shadow-primary/20"
+//               // className="rounded-md bg-primary flex items-center justify-center shrink-0 hidden sm:flex shadow-sm shadow-primary/20"
 //             >
 //               <Sparkles className="w-3.5 h-3.5 text-primary-foreground" />
 //             </div>
 //           )}
-//           <div className="relative max-w-md flex-1">
+//           {/* <div className="relative max-w-md flex-1 hidden sm:block">
+          
 //           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
 //           <input
 //             type="text"
@@ -381,7 +665,8 @@ export function Header() {
 //             placeholder="Search products, orders, customers..."
 //             className="w-full h-10 pl-10 pr-4 rounded-lg bg-secondary border border-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/30 transition"
 //           />
-//         </div>
+//         </div> */}
+
 //         </div>
 
 //         <div className="flex items-center gap-2">
@@ -487,3 +772,5 @@ export function Header() {
 //     </>
 //   );
 // }
+
+
